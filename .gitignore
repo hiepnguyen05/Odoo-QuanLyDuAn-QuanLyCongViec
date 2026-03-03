@@ -51,3 +51,12 @@ package.json
 /src/
 /venv/
 /venv_15_03/
+
+# User exclusions
+addons/quan_ly_du_an/README.md
+docs/
+giaodoan0.md
+muc1-giaodoan1.md
+muc1-giaodoan2.md
+yeucau.md
+

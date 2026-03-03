@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Form View: Mở rộng Form Nhân viên -->
+    <record id="view_employee_form_inherit" model="ir.ui.view">
+        <field name="name">hr.employee.form.inherit.quan_ly_du_an</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            
+            <!-- Thêm tab mới cho thông tin bổ sung -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Thông tin bổ sung" name="additional_info">
+                    <group>
+                        <group string="Thông tin CCCD">
+                            <field name="so_cccd" placeholder="VD: 001234567890"/>
+                            <field name="ngay_cap"/>
+                            <field name="noi_cap" placeholder="VD: Cục Cảnh sát ĐKQL cư trú và DLQG về dân cư"/>
+                        </group>
+                        <group string="Thông tin khác">
+                            <field name="que_quan" placeholder="VD: Hà Nội"/>
+                            <field name="tuoi" readonly="1"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Tree View: Mở rộng Tree View Nhân viên -->
+    <record id="view_employee_tree_inherit" model="ir.ui.view">
+        <field name="name">hr.employee.tree.inherit.quan_ly_du_an</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_tree"/>
+        <field name="arch" type="xml">
+            
+            <xpath expr="//field[@name='job_id']" position="after">
+                <field name="so_cccd" optional="show"/>
+                <field name="que_quan" optional="hide"/>
+                <field name="tuoi" optional="hide"/>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Search View: Mở rộng Search View -->
+    <record id="view_employee_filter_inherit" model="ir.ui.view">
+        <field name="name">hr.employee.search.inherit.quan_ly_du_an</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_filter"/>
+        <field name="arch" type="xml">
+            
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="so_cccd" string="Số CCCD"/>
+                <field name="que_quan" string="Quê quán"/>
+            </xpath>
+            
+            <xpath expr="//filter[@name='inactive']" position="after">
+                <separator/>
+                <filter string="Nhân viên trẻ (&lt; 30 tuổi)" name="young_employees" 
+                        domain="[('birthday', '&gt;=', (context_today() - relativedelta(years=30)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Nhân viên trung niên (30-50 tuổi)" name="middle_age_employees" 
+                        domain="[('birthday', '&lt;', (context_today() - relativedelta(years=30)).strftime('%Y-%m-%d')), 
+                                 ('birthday', '&gt;=', (context_today() - relativedelta(years=50)).strftime('%Y-%m-%d'))]"/>
+            </xpath>
+            
+            <xpath expr="//filter[@name='group_manager']" position="after">
+                <filter string="Quê quán" name="group_que_quan" context="{'group_by': 'que_quan'}"/>
+            </xpath>
+            
+        </field>
+    </record>
+
+</odoo>

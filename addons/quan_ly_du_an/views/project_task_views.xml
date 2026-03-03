@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Form View: Mở rộng Form Công việc -->
+    <record id="view_task_form_inherit" model="ir.ui.view">
+        <field name="name">project.task.form.inherit.quan_ly_du_an</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_form2"/>
+        <field name="arch" type="xml">
+            
+            <!-- Thêm tab thông báo và chọn nhân viên thực hiện -->
+            <xpath expr="//field[@name='user_ids']" position="before">
+                <div class="alert alert-warning" role="alert" 
+                     attrs="{'invisible': [('project_id', '=', False)]}">
+                    <strong>⚠️ Lưu ý phân quyền:</strong>
+                    <p>Chỉ được gán công việc cho nhân viên thuộc dự án này.</p>
+                </div>
+            </xpath>
+            <xpath expr="//field[@name='user_ids']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='user_ids']" position="after">
+                <field name="nhan_vien_ids" widget="many2many_tags" options="{'no_create': True}"/>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Search View: Mở rộng Search View Công việc -->
+    <record id="view_task_search_inherit" model="ir.ui.view">
+        <field name="name">project.task.search.inherit.quan_ly_du_an</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_search_form"/>
+        <field name="arch" type="xml">
+            
+            <!-- Thêm filter "Công việc của tôi" -->
+            <xpath expr="//filter[@name='my_tasks']" position="after">
+                <separator/>
+                <filter string="Việc của tôi" 
+                        name="my_tasks_custom" 
+                        domain="[('user_ids', 'in', [uid])]"
+                        help="Hiển thị tất cả công việc được gán cho tôi"/>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Tree View: Mở rộng Tree View Công việc -->
+    <record id="view_task_tree_inherit" model="ir.ui.view">
+        <field name="name">project.task.tree.inherit.quan_ly_du_an</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_tree2"/>
+        <field name="arch" type="xml">
+            
+            <!-- Thêm màu sắc cho dòng -->
+            <xpath expr="//tree" position="attributes">
+                <attribute name="decoration-success">is_closed == True</attribute>
+                <attribute name="decoration-danger">date_deadline and date_deadline &lt; current_date and is_closed == False</attribute>
+                <attribute name="decoration-warning">date_deadline and date_deadline == current_date and is_closed == False</attribute>
+            </xpath>
+            
+            <!-- Đổi cột Người thực hiện thành Nhân viên -->
+            <xpath expr="//field[@name='user_ids']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='user_ids']" position="after">
+                <field name="nhan_vien_ids" widget="many2many_tags"/>
+            </xpath>
+            
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Menu chính đã có sẵn từ module project và hr của Odoo -->
+    <!-- Module này chỉ mở rộng, không tạo menu mới -->
+    
+</odoo>

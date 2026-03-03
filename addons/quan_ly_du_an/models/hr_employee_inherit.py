@@ -1,0 +1,147 @@
+# -*- coding: utf-8 -*-
+"""
+Kế thừa và mở rộng hr.employee
+Thêm thông tin CCCD, Quê quán và các validation
+"""
+
+from odoo import models, fields, api
+from odoo.exceptions import ValidationError
+from datetime import date
+
+import logging
+_logger = logging.getLogger(__name__)
+
+
+class HrEmployeeExtend(models.Model):
+    """Kế thừa hr.employee để thêm thông tin bổ sung"""
+    _inherit = 'hr.employee'
+    
+    def __init__(self, pool, cr):
+        """Log khi model được khởi tạo"""
+        _logger.info("="*50)
+        _logger.info("QUAN_LY_DU_AN: HrEmployeeExtend model is being initialized!")
+        _logger.info("="*50)
+        super(HrEmployeeExtend, self).__init__(pool, cr)
+    
+    # ==================== FIELDS ====================
+    
+    birthday = fields.Date(string='Ngày sinh', required=True)
+    
+    que_quan = fields.Char(
+        string='Quê quán',
+        required=True,
+        help='Địa chỉ quê quán của nhân viên',
+        tracking=True
+    )
+    
+    so_cccd = fields.Char(
+        string='Số CCCD',
+        required=True,
+        help='Số Căn cước công dân (12 số)',
+        copy=False,
+        tracking=True
+    )
+    
+    ngay_cap = fields.Date(
+        string='Ngày cấp CCCD',
+        required=True,
+        help='Ngày cấp Căn cước công dân',
+        tracking=True
+    )
+    
+    noi_cap = fields.Char(
+        string='Nơi cấp CCCD',
+        required=True,
+        help='Nơi cấp Căn cước công dân',
+        default='Cục Cảnh sát ĐKQL cư trú và DLQG về dân cư',
+        tracking=True
+    )
+    
+    tuoi = fields.Integer(
+        string='Tuổi',
+        compute='_compute_tuoi',
+        store=False,
+        help='Tuổi được tính từ ngày sinh'
+    )
+    
+    # ==================== COMPUTED METHODS ====================
+    
+    @api.depends('birthday')
+    def _compute_tuoi(self):
+        """Tính tuổi từ ngày sinh"""
+        today = date.today()
+        for record in self:
+            if record.birthday:
+                age = today.year - record.birthday.year
+                if today.month < record.birthday.month or \
+                   (today.month == record.birthday.month and today.day < record.birthday.day):
+                    age -= 1
+                record.tuoi = age
+            else:
+                record.tuoi = 0
+    
+    # ==================== CONSTRAINTS ====================
+    
+    @api.constrains('birthday')
+    def _check_birthday(self):
+        """Kiểm tra ngày sinh không được lớn hơn ngày hiện tại"""
+        for record in self:
+            if record.birthday and record.birthday > fields.Date.today():
+                raise ValidationError(
+                    "❌ Ngày sinh không hợp lệ!\n\n"
+                    f"Ngày sinh đã nhập: {record.birthday}\n"
+                    f"Ngày hiện tại: {fields.Date.today()}\n\n"
+                    "💡 Ngày sinh không được lớn hơn ngày hiện tại."
+                )
+    
+    @api.constrains('so_cccd')
+    def _check_so_cccd(self):
+        """Kiểm tra số CCCD: định dạng và không trùng lặp"""
+        for record in self:
+            if record.so_cccd:
+                # Kiểm tra định dạng
+                if not record.so_cccd.isdigit() or len(record.so_cccd) != 12:
+                    raise ValidationError(
+                        "❌ Số CCCD không hợp lệ!\n\n"
+                        f"Số CCCD đã nhập: {record.so_cccd} ({len(record.so_cccd)} ký tự)\n\n"
+                        "💡 Số CCCD phải là 12 chữ số."
+                    )
+                
+                # Kiểm tra trùng lặp
+                duplicate = self.search([
+                    ('so_cccd', '=', record.so_cccd),
+                    ('id', '!=', record.id)
+                ], limit=1)
+                
+                if duplicate:
+                    raise ValidationError(
+                        f"❌ Số CCCD '{record.so_cccd}' đã tồn tại!\n\n"
+                        f"Nhân viên: {duplicate.name}\n"
+                        f"Mã NV: {duplicate.employee_id or 'Chưa có'}\n\n"
+                        "💡 Mỗi nhân viên phải có số CCCD riêng biệt."
+                    )
+    
+    @api.constrains('ngay_cap', 'birthday')
+    def _check_ngay_cap(self):
+        """Kiểm tra ngày cấp CCCD hợp lệ"""
+        for record in self:
+            if record.ngay_cap:
+                if record.ngay_cap > fields.Date.today():
+                    raise ValidationError(
+                        "❌ Ngày cấp CCCD không hợp lệ!\n\n"
+                        f"Ngày cấp đã nhập: {record.ngay_cap}\n"
+                        f"Ngày hiện tại: {fields.Date.today()}\n\n"
+                        "💡 Ngày cấp không được lớn hơn ngày hiện tại."
+                    )
+                
+                if record.birthday:
+                    age_at_issue = (record.ngay_cap - record.birthday).days / 365.25
+                    if age_at_issue < 14:
+                        raise ValidationError(
+                            "❌ Ngày cấp CCCD không hợp lệ!\n\n"
+                            f"Tuổi khi cấp: {age_at_issue:.1f} năm\n\n"
+                            "💡 Công dân phải đủ 14 tuổi mới được cấp CCCD."
+                        )
+    
+    # ==================== OVERRIDE METHODS ====================
+    # (Đã loại bỏ name_get do hr.employee mặc định không có trường employee_id)

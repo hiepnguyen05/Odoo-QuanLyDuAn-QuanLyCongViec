@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Form View: Thêm field vào form dự án -->
+    <record id="view_project_form_inherit" model="ir.ui.view">
+        <field name="name">project.project.form.inherit.quan_ly_du_an</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            
+            <!-- Thêm field ở cuối sheet -->
+            <xpath expr="//field[@name='name']" position="after">
+                <group>
+                    <field name="thanh_vien_ids" string="Thành viên dự án" widget="many2many_tags" placeholder="Chọn thành viên..."/>
+                </group>
+            </xpath>
+            
+        </field>
+    </record>
+
+</odoo>
