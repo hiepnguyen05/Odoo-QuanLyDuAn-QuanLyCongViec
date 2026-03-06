@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    
+    <!-- Giai đoạn: Mới -->
+    <record id="project_stage_new" model="project.task.type">
+        <field name="name">Mới</field>
+        <field name="sequence">10</field>
+        <field name="fold" eval="False"/>
+        <field name="is_closed" eval="False"/>
+    </record>
+
+    <!-- Giai đoạn: Đang thực hiện -->
+    <record id="project_stage_in_progress" model="project.task.type">
+        <field name="name">Đang thực hiện</field>
+        <field name="sequence">20</field>
+        <field name="fold" eval="False"/>
+        <field name="is_closed" eval="False"/>
+    </record>
+
+    <!-- Giai đoạn: Đã hoàn thành -->
+    <record id="project_stage_done" model="project.task.type">
+        <field name="name">Đã hoàn thành</field>
+        <field name="sequence">30</field>
+        <field name="fold" eval="True"/>
+        <field name="is_closed" eval="True"/>
+    </record>
+
+</odoo>

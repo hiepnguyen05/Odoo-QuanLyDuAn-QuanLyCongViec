@@ -4,6 +4,7 @@ Kế thừa và mở rộng project.task
 Thêm validation phân quyền gán công việc
 """
 
+from datetime import timedelta
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 
@@ -21,10 +22,13 @@ class ProjectTask(models.Model):
         string='Nhân viên thực hiện',
         help='Danh sách nhân viên được giao việc (không cần User)'
     )
+    
+    task_status_class = fields.Char(compute='_compute_task_status', store=False)
+    task_status_label = fields.Char(compute='_compute_task_status', store=False)
 
     # Ghi đè field date_deadline để thêm giá trị mặc định (7 ngày tới)
     date_deadline = fields.Date(
-        default=lambda self: fields.Date.to_string(fields.Date.context_today(self) + fields.Date.timedelta(days=7))
+        default=lambda self: fields.Date.context_today(self) + timedelta(days=7)
     )
 
     # ==================== CONSTRAINTS ====================
@@ -62,6 +66,27 @@ class ProjectTask(models.Model):
                             f"1. Thêm nhân viên vào danh sách thành viên dự án, HOẶC\n"
                             f"2. Chọn nhân viên khác đã có trong dự án"
                         )
+
+    @api.depends('stage_id', 'date_deadline')
+    def _compute_task_status(self):
+        """Tính toán nhãn và màu sắc cho thẻ Kanban"""
+        today = fields.Date.context_today(self)
+        for task in self:
+            # 1. Nếu Đã hoàn thành (Xanh)
+            if task.stage_id and (task.stage_id.fold or getattr(task.stage_id, 'is_closed', False) or any(k in task.stage_id.name.lower() for k in ['xong', 'giao', 'hoàn thành', 'done'])):
+                task.task_status_class = 'bg-success'
+                task.task_status_label = 'Đã hoàn thành'
+            # 2. Nếu Quá hạn (Đỏ) - Chưa hoàn thành mà hạn < hôm nay
+            elif task.date_deadline and task.date_deadline < today:
+                task.task_status_class = 'bg-danger'
+                task.task_status_label = 'Quá hạn'
+            # 3. Nếu Hôm nay (Vàng) - Chưa hoàn thành mà hạn == hôm nay
+            elif task.date_deadline and task.date_deadline == today:
+                task.task_status_class = 'bg-warning text-dark'
+                task.task_status_label = 'Hôm nay'
+            else:
+                task.task_status_class = ''
+                task.task_status_label = ''
 
     # ==================== ONCHANGE METHODS ====================
     

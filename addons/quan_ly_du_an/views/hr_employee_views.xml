@@ -8,21 +8,46 @@
         <field name="inherit_id" ref="hr.view_employee_form"/>
         <field name="arch" type="xml">
             
-            <!-- Thêm tab mới cho thông tin bổ sung -->
-            <xpath expr="//notebook" position="inside">
-                <page string="Thông tin bổ sung" name="additional_info">
-                    <group>
-                        <group string="Thông tin CCCD">
-                            <field name="so_cccd" placeholder="VD: 001234567890"/>
-                            <field name="ngay_cap"/>
-                            <field name="noi_cap" placeholder="VD: Cục Cảnh sát ĐKQL cư trú và DLQG về dân cư"/>
-                        </group>
-                        <group string="Thông tin khác">
-                            <field name="que_quan" placeholder="VD: Hà Nội"/>
-                            <field name="tuoi" readonly="1"/>
-                        </group>
-                    </group>
-                </page>
+            <!-- Ẩn các trường mặc định của Odoo bị trùng lặp -->
+            <xpath expr="//field[@name='identification_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='children']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            
+            <!-- 1. Đưa thông tin CCCD vào nhóm trong tab Thông tin cá nhân -->
+            <xpath expr="//page[@name='personal_information']/group/group[@name='has_work_permit']" position="before">
+                <group string="Thông tin lý lịch (CCCD)">
+                    <field name="so_cccd" placeholder="VD: 001234567890"/>
+                    <field name="ngay_cap"/>
+                    <field name="noi_cap" placeholder="VD: Cục Cảnh sát ĐKQL cư trú..."/>
+                    <field name="que_quan" placeholder="VD: Hà Nội"/>
+                    <field name="tuoi" readonly="1"/>
+                </group>
+            </xpath>
+            
+            <!-- 2. Đưa ds Gia đình và Quá trình công tác xuống phía dưới cùng của tab Thông tin cá nhân -->
+            <xpath expr="//page[@name='personal_information']/group" position="after">
+                <separator string="Gia đình"/>
+                <field name="family_ids">
+                    <tree editable="bottom">
+                        <field name="name"/>
+                        <field name="relationship"/>
+                        <field name="birth_date"/>
+                        <field name="is_dependent"/>
+                    </tree>
+                </field>
+                
+                <separator string="Quá trình công tác"/>
+                <field name="work_history_ids">
+                    <tree editable="bottom" default_order="date_start desc">
+                        <field name="company_name"/>
+                        <field name="position"/>
+                        <field name="date_start"/>
+                        <field name="date_end"/>
+                    </tree>
+                </field>
             </xpath>
             
         </field>
@@ -35,10 +60,30 @@
         <field name="inherit_id" ref="hr.view_employee_tree"/>
         <field name="arch" type="xml">
             
+            <!-- Ẩn cột job_id mặc định vì nó là thẻ link (Many2one), User thường dùng job_title (Char) -->
+            <xpath expr="//field[@name='job_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            
+            <xpath expr="//field[@name='job_id']" position="after">
+                <field name="job_title" string="Vị trí công việc" optional="show"/>
+            </xpath>
+            
             <xpath expr="//field[@name='job_id']" position="after">
                 <field name="so_cccd" optional="show"/>
                 <field name="que_quan" optional="hide"/>
                 <field name="tuoi" optional="hide"/>
+            </xpath>
+            
+            <!-- Ẩn các cột Hoạt động kế tiếp (Activity) -->
+            <xpath expr="//field[@name='activity_ids']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='activity_user_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='activity_date_deadline']" position="attributes">
+                <attribute name="invisible">1</attribute>
             </xpath>
             
         </field>
@@ -70,6 +115,11 @@
             </xpath>
             
         </field>
+    </record>
+
+    <!-- Kế thừa Action để đổi mặc định thành giao diện List (tree) -->
+    <record id="hr.open_view_employee_list_my" model="ir.actions.act_window">
+        <field name="view_mode">tree,kanban,form,activity</field>
     </record>
 
 </odoo>

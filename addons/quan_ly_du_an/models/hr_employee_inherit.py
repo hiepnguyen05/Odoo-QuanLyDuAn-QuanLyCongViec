@@ -64,6 +64,9 @@ class HrEmployeeExtend(models.Model):
         help='Tuổi được tính từ ngày sinh'
     )
     
+    family_ids = fields.One2many('hr.family', 'employee_id', string="Danh sách thân nhân")
+    work_history_ids = fields.One2many('hr.work.history', 'employee_id', string="Quá trình công tác")
+    
     # ==================== COMPUTED METHODS ====================
     
     @api.depends('birthday')
@@ -79,7 +82,7 @@ class HrEmployeeExtend(models.Model):
                 record.tuoi = age
             else:
                 record.tuoi = 0
-    
+                
     # ==================== CONSTRAINTS ====================
     
     @api.constrains('birthday')

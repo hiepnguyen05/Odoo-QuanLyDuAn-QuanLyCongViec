@@ -33,7 +33,7 @@ class ProjectProject(models.Model):
     progress = fields.Float(
         string='Tiến độ (%)',
         compute='_compute_progress',
-        store=True,
+        store=False,
         help='Tiến độ được tính tự động từ % hoàn thành của các task'
     )
     
@@ -45,20 +45,26 @@ class ProjectProject(models.Model):
         for record in self:
             record.so_luong_thanh_vien = len(record.thanh_vien_ids)
     
-    @api.depends('task_ids', 'task_ids.stage_id', 'task_ids.stage_id.fold')
+    @api.depends('task_ids', 'task_ids.stage_id')
     def _compute_progress(self):
         """
-        Tính % tiến độ dự án dựa trên số task hoàn thành
+        Tính % tiến độ dự án dựa trên số task hoàn thành (real-time)
         Công thức: (Số task Done / Tổng số task) * 100
+        Nhận diện Hoàn thành qua is_closed, fold hoặc theo tên (Đã giao, Xong, Hoàn thành).
         """
         for project in self:
             tasks = project.task_ids
             if tasks:
-                completed_tasks = tasks.filtered(lambda t: t.stage_id.fold)
+                completed_tasks = tasks.filtered(
+                    lambda t: t.stage_id and (
+                        t.stage_id.fold or 
+                        getattr(t.stage_id, 'is_closed', False) or 
+                        any(keyword in t.stage_id.name.lower() for keyword in ['xong', 'giao', 'hoàn thành', 'done'])
+                    )
+                )
                 project.progress = (len(completed_tasks) / len(tasks)) * 100
             else:
                 project.progress = 0.0
-    
     # ==================== ACTION METHODS ====================
     
     def action_view_tasks(self):
@@ -68,7 +74,7 @@ class ProjectProject(models.Model):
             'type': 'ir.actions.act_window',
             'name': 'Công việc',
             'res_model': 'project.task',
-            'view_mode': 'tree,form,kanban',
+            'view_mode': 'kanban,tree,form',
             'domain': [('project_id', '=', self.id)],
             'context': {
                 'default_project_id': self.id,

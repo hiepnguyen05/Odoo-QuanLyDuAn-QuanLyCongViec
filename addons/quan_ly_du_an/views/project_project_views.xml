@@ -12,7 +12,37 @@
             <xpath expr="//field[@name='name']" position="after">
                 <group>
                     <field name="thanh_vien_ids" string="Thành viên dự án" widget="many2many_tags" placeholder="Chọn thành viên..."/>
+                    <field name="progress" widget="progressbar"/>
                 </group>
+            </xpath>
+            
+            <!-- Thêm Smart buttons -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_team_members" type="object" class="oe_stat_button" icon="fa-users">
+                    <field name="so_luong_thanh_vien" widget="statinfo" string="Thành viên"/>
+                </button>
+                <button name="action_view_tasks" type="object" class="oe_stat_button" icon="fa-tasks">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_text">Công việc liên quan</span>
+                    </div>
+                </button>
+            </xpath>
+            
+        </field>
+    </record>
+    <!-- Kanban View: Hiển thị Tiến độ trên từng thẻ Dự án -->
+    <record id="view_project_kanban_inherit" model="ir.ui.view">
+        <field name="name">project.project.kanban.inherit.quan_ly_du_an</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.view_project_kanban"/>
+        <field name="arch" type="xml">
+            
+            <!-- Hiển thị % Tiến độ ở thân thẻ Kanban của Dự án (CSS cùng dòng) -->
+            <xpath expr="//div[hasclass('o_project_kanban_boxes')]" position="before">
+                <div class="mt8 mb8 d-flex align-items-center" style="font-size: 13px;">
+                    <strong class="mr8" style="margin-right: 8px;">Tiến độ:</strong>
+                    <field name="progress" widget="progressbar" style="flex: 1;"/>
+                </div>
             </xpath>
             
         </field>
