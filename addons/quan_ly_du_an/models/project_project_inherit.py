@@ -154,7 +154,14 @@ class ProjectProject(models.Model):
         if not self.name:
             raise UserError(_("Vui lòng nhập Tên Dự án trước khi dùng AI gợi ý công việc."))
             
-        api_key = "AIzaSyCF_cHAwgX_i1gjZMVK1oRyYbHIubrilQ4"
+        # Cẩn thận: Lấy API Key từ Cấu hình hệ thống (Database) thay vì code cứng
+        api_key = self.env['ir.config_parameter'].sudo().get_param('gemini.api_key')
+        
+        if not api_key:
+            raise UserError(_("Chưa cấu hình API Key cho Gemini AI. \n"
+                              "Vui lòng vào 'Thiết lập' -> 'Kỹ thuật' -> 'Thông số hệ thống' \n"
+                              "và tạo mới thông số có Khóa (Key) là 'gemini.api_key' rồi dán API key của bạn vào Giá trị (Value)."))
+                              
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
         
         # Tạo Prompt gửi cho Gemini
