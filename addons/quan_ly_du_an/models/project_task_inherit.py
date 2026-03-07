@@ -116,3 +116,21 @@ class ProjectTask(models.Model):
                     'nhan_vien_ids': []
                 }
             }
+
+    # ==================== ACTION TỪ VIEW TASK ====================
+    def action_generate_tasks_ai_from_task(self):
+        """
+        Hàm được gọi từ nút nằm trên màn hình Tree/Kanban của Công Việc.
+        Mục đích: Lấy ra được ID Dự án hiện tại để gọi sang hàm Sinh Task AI bên project
+        """
+        project_id = self.env.context.get('default_project_id') or self.env.context.get('active_id')
+        
+        if not project_id:
+            raise ValidationError("❌ Không thể kết nối tới AI: Không tìm thấy Dự án gốc! Vô lại đúng Màn hình dự án nhé.")
+            
+        project = self.env['project.project'].browse(project_id)
+        if not project.exists():
+            raise ValidationError("❌ Dự án không tồn tại.")
+        
+        # Chuyền lệnh sang Project xử lý
+        return project.action_generate_tasks_ai()

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- View cho model project.type -->
+    <record id="view_project_type_form" model="ir.ui.view">
+        <field name="name">project.type.form</field>
+        <field name="model">project.type</field>
+        <field name="arch" type="xml">
+            <form string="Loại Dự Án">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Tên Loại Dự Án VD: Web, Xây dựng..."/>
+                        </h1>
+                    </div>
+                    <notebook>
+                        <page string="Danh sách Công việc (Task) Mẫu" name="task_templates">
+                            <field name="task_template_ids">
+                                <tree editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name" string="Tên Công việc Mẫu"/>
+                                    <field name="description" string="Mô tả tóm tắt"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_project_type_tree" model="ir.ui.view">
+        <field name="name">project.type.tree</field>
+        <field name="model">project.type</field>
+        <field name="arch" type="xml">
+            <tree string="Loại Dự Án">
+                <field name="name"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Action mở menu Loại Dự án -->
+    <record id="action_project_type" model="ir.actions.act_window">
+        <field name="name">Cấu hình Loại Dự án (Tự động hóa)</field>
+        <field name="res_model">project.type</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Tạo một Loại Dự án mới!
+            </p>
+            <p>
+                Định nghĩa các loại dự án để hệ thống tự động sinh Task mẫu khi Quản lý vừa tạo Dự án.
+            </p>
+        </field>
+    </record>
+
+    <!-- Gắn Menu vào phần Cấu hình của Cụm ứng dụng Dự án -->
+    <menuitem id="menu_project_type_config" 
+              name="Loại Dự án (Automation)" 
+              parent="project.menu_project_config" 
+              action="action_project_type" 
+              sequence="100"/>
+</odoo>

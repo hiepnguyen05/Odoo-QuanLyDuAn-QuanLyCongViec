@@ -31,7 +31,7 @@
     'author': "Nhóm 9 - FIT DNU",
     'website': "https://github.com/FIT-DNU/Business-Internship",
     'category': 'Project Management',
-    'version': '1.0.5',
+    'version': '15.0.1.0.1',
 
     # Module phụ thuộc
     'depends': [
@@ -46,6 +46,8 @@
         'views/hr_employee_views.xml',
         'views/project_project_views.xml',
         'views/project_task_views.xml',
+        'views/project_type_views.xml',
+        'wizard/ai_task_generator_wizard_views.xml',
         'views/menu.xml',
     ],
 

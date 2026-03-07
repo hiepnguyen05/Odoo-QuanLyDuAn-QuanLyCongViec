@@ -9,3 +9,7 @@ access_hr_family_user,hr.family.user,model_hr_family,base.group_user,1,1,1,0
 access_hr_family_manager,hr.family.manager,model_hr_family,hr.group_hr_manager,1,1,1,1
 access_hr_work_history_user,hr.work.history.user,model_hr_work_history,base.group_user,1,1,1,0
 access_hr_work_history_manager,hr.work.history.manager,model_hr_work_history,hr.group_hr_manager,1,1,1,1
+access_project_type_user,project.type.user,model_project_type,base.group_user,1,1,1,1
+access_project_task_template_user,project.task.template.user,model_project_task_template,base.group_user,1,1,1,1
+access_ai_task_generator_wizard,ai.task.generator.wizard,model_ai_task_generator_wizard,base.group_user,1,1,1,1
+access_ai_task_generator_line,ai.task.generator.line,model_ai_task_generator_line,base.group_user,1,1,1,1

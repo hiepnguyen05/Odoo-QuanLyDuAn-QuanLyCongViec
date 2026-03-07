@@ -8,6 +8,10 @@
         <field name="inherit_id" ref="project.edit_project"/>
         <field name="arch" type="xml">
             
+            <xpath expr="//header" position="inside">
+                <button name="action_generate_tasks_ai" type="object" string="🤖 Gợi ý công việc bằng AI" class="oe_highlight" title="AI sẽ tự sinh thẻ Công Việc và phân cột Kanban"/>
+            </xpath>
+
             <!-- Thêm field ở cuối sheet -->
             <xpath expr="//field[@name='name']" position="after">
                 <group>
@@ -37,6 +41,11 @@
         <field name="inherit_id" ref="project.view_project_kanban"/>
         <field name="arch" type="xml">
             
+            <!-- Tắt form tạo nhanh, bắt buộc mở form chi tiết đầy đủ khi ấn Tạo Mới -->
+            <xpath expr="//kanban" position="attributes">
+                <attribute name="on_create"></attribute>
+            </xpath>
+
             <!-- Hiển thị % Tiến độ ở thân thẻ Kanban của Dự án (CSS cùng dòng) -->
             <xpath expr="//div[hasclass('o_project_kanban_boxes')]" position="before">
                 <div class="mt8 mb8 d-flex align-items-center" style="font-size: 13px;">
