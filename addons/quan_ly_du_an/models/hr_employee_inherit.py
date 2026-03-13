@@ -146,5 +146,58 @@ class HrEmployeeExtend(models.Model):
                             "💡 Công dân phải đủ 14 tuổi mới được cấp CCCD."
                         )
     
+    # ==================== KPI PERFORMANCE FIELDS (Mức 2) ====================
+    
+    kpi_average = fields.Float(
+        string='Điểm KPI Trung bình',
+        compute='_compute_kpi_performance',
+        store=False,
+        group_operator="avg"
+    )
+    
+    task_done_count = fields.Integer(
+        string='Số việc đã xong',
+        compute='_compute_kpi_performance',
+        store=False
+    )
+    
+    task_late_count = fields.Integer(
+        string='Số việc trễ hạn',
+        compute='_compute_kpi_performance',
+        store=False
+    )
+
+    def _compute_kpi_performance(self):
+        """Tính toán thống kê hiệu suất công việc từ các task được gán"""
+        kpi_map = {'a': 100.0, 'b': 80.0, 'c': 60.0, 'd': 40.0}
+        
+        for employee in self:
+            # Tìm các task mà nhân viên này tham gia (qua field nhan_vien_ids)
+            tasks = self.env['project.task'].search([
+                ('nhan_vien_ids', 'in', [employee.id]),
+                ('date_completed', '!=', False) # Chỉ tính các việc đã xong
+            ])
+            
+            employee.task_done_count = len(tasks)
+            employee.task_late_count = len(tasks.filtered(lambda t: t.kpi_rating in ['c', 'd']))
+            
+            if tasks:
+                total_score = sum(kpi_map.get(t.kpi_rating, 0.0) for t in tasks)
+                employee.kpi_average = total_score / len(tasks)
+            else:
+                employee.kpi_average = 0.0
+
+    def action_view_employee_tasks(self):
+        """Smart button mở danh sách công việc của nhân viên này"""
+        self.ensure_one()
+        return {
+            'name': 'Công việc được gán',
+            'type': 'ir.actions.act_window',
+            'res_model': 'project.task',
+            'view_mode': 'kanban,tree,form',
+            'domain': [('nhan_vien_ids', 'in', [self.id])],
+            'context': {'default_nhan_vien_ids': [(4, self.id)]},
+        }
+
     # ==================== OVERRIDE METHODS ====================
     # (Đã loại bỏ name_get do hr.employee mặc định không có trường employee_id)

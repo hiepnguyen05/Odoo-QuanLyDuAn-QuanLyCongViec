@@ -80,15 +80,16 @@ class ProjectProject(models.Model):
         for record in self:
             record.so_luong_thanh_vien = len(record.thanh_vien_ids)
     
-    @api.depends('task_ids', 'task_ids.stage_id')
+    @api.depends('tasks', 'tasks.stage_id')
     def _compute_progress(self):
         """
         Tính % tiến độ dự án dựa trên số task hoàn thành (real-time)
         Công thức: (Số task Done / Tổng số task) * 100
         Nhận diện Hoàn thành qua is_closed, fold hoặc theo tên (Đã giao, Xong, Hoàn thành).
+        Sử dụng fields 'tasks' thay vì 'task_ids' để tránh bị lọc mất các task đã đóng.
         """
         for project in self:
-            tasks = project.task_ids
+            tasks = project.tasks
             if tasks:
                 completed_tasks = tasks.filtered(
                     lambda t: t.stage_id and (
@@ -97,6 +98,8 @@ class ProjectProject(models.Model):
                         any(keyword in t.stage_id.name.lower() for keyword in ['xong', 'giao', 'hoàn thành', 'done'])
                     )
                 )
+                project.progress = (len(completed_tasks) / len(tasks)) * 100
+                
                 project.progress = (len(completed_tasks) / len(tasks)) * 100
             else:
                 project.progress = 0.0
@@ -107,6 +110,27 @@ class ProjectProject(models.Model):
                 ('project_id', '=', record.id)
             ])
             
+    # ==================== OVERRIDE METHODS ====================
+    def write(self, vals):
+        """Mở rộng hàm write để tự động chuyển trạng thái dự án (Mức 2)"""
+        res = super(ProjectProject, self).write(vals)
+        
+        # Nếu đã hoàn thành 100% thì tự động nhảy Stage
+        for project in self:
+            if project.progress == 100.0:
+                # Tìm stage có tên liên quan đến hoàn thành/xong
+                done_stage = self.env['project.project.stage'].search([
+                    '|', '|', '|',
+                    ('name', 'ilike', 'xong'),
+                    ('name', 'ilike', 'hoàn thành'),
+                    ('name', 'ilike', 'đã giao'),
+                    ('name', 'ilike', 'done')
+                ], limit=1)
+                if done_stage and project.stage_id != done_stage:
+                    # Dùng sudo() để đảm bảo phân quyền
+                    project.sudo().stage_id = done_stage.id
+        return res
+
     # ==================== ACTION METHODS ====================
     
     def action_view_tasks(self):
@@ -181,11 +205,24 @@ class ProjectProject(models.Model):
         {{
             "kanban_stages": "Việc cần làm, Phân tích, Lập trình, Chạy thử, Đã hoàn thành",
             "tasks": [
-                {{"name": "Tên công việc 1", "description": "Mô tả chi tiết công việc 1"}},
-                {{"name": "Tên công việc 2", "description": "Mô tả chi tiết công việc 2"}}
+                {{
+                    "name": "Tên công việc 1", 
+                    "description": "Mô tả ngắn gọn",
+                    "sop": "<p>Văn bản HTML chi tiết quy trình thực hiện bước 1, bước 2...</p>",
+                    "checklist": "Nội dung 1, Nội dung 2, Nội dung 3"
+                }},
+                {{
+                    "name": "Tên công việc 2", 
+                    "description": "Mô tả ngắn gọn",
+                    "sop": "<p>Văn bản HTML quy trình...</p>",
+                    "checklist": "Nội dung A, Nội dung B"
+                }}
             ]
         }}
-        Lưu ý: "kanban_stages" là chuỗi các tên cột cách nhau bởi dấu phẩy, dựa theo loại dự án.
+        Lưu ý: 
+        - "sop" là quy trình thực hiện chi tiết (Standard Operating Procedure) dưới dạng HTML.
+        - "checklist" là các đầu mục kiểm tra nhỏ, phân tách bằng dấu phẩy.
+        - "kanban_stages" là chuỗi các tên cột cách nhau bởi dấu phẩy.
         Không có thêm bất kỳ văn bản nào khác ngoài Object JSON này.
         """
         
@@ -223,6 +260,8 @@ class ProjectProject(models.Model):
                                 wizard_lines.append((0, 0, {
                                     'name': task_name,
                                     'description': task_dict.get('description', ''),
+                                    'ai_sop': task_dict.get('sop', ''),
+                                    'checklist_raw': task_dict.get('checklist', ''),
                                 }))
                                 
                         if wizard_lines or kanban_stages_str:

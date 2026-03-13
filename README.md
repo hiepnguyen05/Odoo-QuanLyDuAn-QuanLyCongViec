@@ -1,74 +1,56 @@
+# Hệ thống Quản trị Dự án & Nhân sự Tích hợp AI (Nhóm 9)
+
+![Odoo](https://img.shields.io/badge/Odoo-16.0-875A7B?style=for-the-badge&logo=odoo&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14+-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+
+Dự án phát triển module mở rộng cho Odoo 16 nhằm tối ưu hóa việc quản lý dự án và nhân sự trong các doanh nghiệp phần mềm, tích hợp tự động hóa kịch bản và trí tuệ nhân tạo (Gemini AI).
+
 ---
-![Ubuntu](https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)
-![GitLab](https://img.shields.io/badge/gitlab-%23181717.svg?style=for-the-badge&logo=gitlab&logoColor=white)
-![Postgres](https://img.shields.io/badge/postgres-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white)
 
-![Python](https://img.shields.io/badge/python-v3.8+-blue.svg)
-[![security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
+## 🌟 Tính năng nổi bật
 
+### 🟢 Mức 1: Quản trị cốt lõi
+* **Tích hợp HRM & Project**: Quản lý thành viên dự án chặt chẽ, mở rộng thông tin nhân sự (gia đình, lịch sử công tác).
+* **Ràng buộc an toàn**: Chỉ cho phép gán công việc cho nhân viên thuộc dự án.
+* **Tiến độ Real-time**: Tự động tính % hoàn thành dự án ngay trên giao diện Kanban.
 
+### 🔵 Mức 2: Tự động hóa (Automation)
+* **Kịch bản mẫu**: Tự động sinh hàng loạt công việc mẫu khi chọn loại dự án (Mobile, Web, Backend...).
+* **KPI thông minh**: Tự động xếp loại KPI (A, B, C, D) dựa trên Deadline và thời gian thực tế.
+* **Hệ thống nhắc việc**: Tự động gửi Email thông báo giao việc và nhắc nhở hạn chót hàng ngày.
 
-# 1. Cài đặt công cụ, môi trường và các thư viện cần thiết
+### 🟣 Mức 3: Đột phá AI & Analytics
+* **Advanced AI Task Generator**: Gemini AI tự động sinh danh sách công việc, viết sẵn **Quy trình chuẩn (SOP)** và **Danh sách kiểm tra (Checklist)**.
+* **BI Dashboard**: Hệ thống biểu đồ KPI và Pivot chuyên sâu giúp theo dõi hiệu suất toàn đội ngũ.
 
-## 1.1. Clone project.
-```
-git clone https://gitlab.com/anhlta/odoo-fitdnu.git
-```
+---
 
-```
-git checkout cntt15_03
-```
+## 🚀 Hướng dẫn cài đặt
 
+### 1. Cài đặt môi trường
+```bash
+# Clone dự án
+git clone https://github.com/hiepnguyen05/Odoo-QuanLyDuAn-QuanLyCongViec.git
+cd Odoo-QuanLyDuAn-QuanLyCongViec
 
-## 1.2. cài đặt các thư viện cần thiết
-
-Người sử dụng thực thi các lệnh sau đề cài đặt các thư viện cần thiết
-
-```
-sudo apt-get install libxml2-dev libxslt-dev libldap2-dev libsasl2-dev libssl-dev python3.10-distutils python3.10-dev build-essential libssl-dev libffi-dev zlib1g-dev python3.10-venv libpq-dev
-```
-## 1.3. khởi tạo môi trường ảo.
-
-`python3.10 -m venv ./venv`
-Thay đổi trình thông dịch sang môi trường ảo và chạy requirements.txt để cài đặt tiếp các thư viện được yêu cầu
-
-```
+# Khởi tạo môi trường ảo
+python3.10 -m venv venv
 source venv/bin/activate
-pip3 install -r requirements.txt
+pip install -r requirements.txt
 ```
 
-# 2. Setup database
+### 2. Cấu hình hệ thống
+1. Tạo tệp `odoo.conf` (tham khảo `odoo.conf.template`).
+2. Khởi động Odoo và cài đặt module `quan_ly_du_an`.
+3. Cấu hình Gemini API: Vào **Thiết lập -> Kỹ thuật -> Thông số hệ thống**, thêm key `gemini.api_key`.
+4. Cấu hình Email: Thiết lập **Outgoing Mail Server** để kích hoạt tính năng thông báo.
 
-Khởi tạo database trên docker bằng việc thực thi file dockercompose.yml.
-
-`docker-compose up -d`
-
-# 3. Setup tham số chạy cho hệ thống
-
-## 3.1. Khởi tạo odoo.conf
-
-Tạo tệp **odoo.conf** có nội dung như sau:
-
-```
-[options]
-addons_path = addons
-db_host = localhost
-db_password = odoo
-db_user = odoo
-db_port = 5433
-xmlrpc_port = 8069
-```
-Có thể kế thừa từ **odoo.conf.template**
-
-
-# 4. Chạy hệ thống và cài đặt các ứng dụng cần thiết
-Lệnh chạy
-```
-python3 odoo-bin.py -c odoo.conf -u all
+### 3. Lệnh chạy
+```bash
+python3 odoo-bin -c odoo.conf -u quan_ly_du_an
 ```
 
-Người sử dụng truy cập theo đường dẫn _http://localhost:8069/_ để đăng nhập vào hệ thống.
-
-Hoàn tất
-    ![Posterdemo](https://github.com/user-attachments/assets/1e80601a-89db-4057-bfae-77cddaf0bb89)
+---
+*Phát triển bởi Nhóm 9 - CNTT15_03.*
 

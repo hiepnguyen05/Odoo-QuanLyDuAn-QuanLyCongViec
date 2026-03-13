@@ -88,13 +88,24 @@ class AITaskGeneratorWizard(models.TransientModel):
                 continue
 
             # Tạo Task và nhét tất cả vào Cột "Việc cần làm" (todo_stage)
-            task_env.create({
+            new_task = task_env.create({
                 'name': line.name,
                 'description': line.description,
+                'ai_sop': line.ai_sop,
                 'project_id': self.project_id.id,
                 'stage_id': todo_stage.id,
                 'nhan_vien_ids': [(6, 0, line.nhan_vien_ids.ids)] if line.nhan_vien_ids else False,
             })
+            
+            # Tạo Checklist từ chuỗi raw của AI (phân tách bởi dấu phẩy)
+            if line.checklist_raw:
+                checklist_names = [c.strip() for c in line.checklist_raw.split(',') if c.strip()]
+                for idx, c_name in enumerate(checklist_names):
+                    self.env['project.task.checklist'].create({
+                        'name': c_name,
+                        'task_id': new_task.id,
+                        'sequence': (idx + 1) * 10
+                    })
             
         # [Bước 4] Check xem Project đã có ít nhất 1 cột "Hoàn thành" để User kéo thẻ chưa
         has_done_stage = stage_env.search([
@@ -127,3 +138,6 @@ class AITaskGeneratorLine(models.TransientModel):
     
     # Cho phép người dùng chọn nhân viên thực hiện (lọc theo thành viên dự án nếu cần)
     nhan_vien_ids = fields.Many2many('hr.employee', string='Người thực hiện') 
+    
+    ai_sop = fields.Html(string='Quy trình AI gợi ý')
+    checklist_raw = fields.Text(string='Danh sách kiểm tra (txt)', help='Chuỗi text phân tách bởi dấu phẩy')

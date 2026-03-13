@@ -32,6 +32,7 @@
                 </button>
             </xpath>
             
+            
         </field>
     </record>
     <!-- Kanban View: Hiển thị Tiến độ trên từng thẻ Dự án -->
