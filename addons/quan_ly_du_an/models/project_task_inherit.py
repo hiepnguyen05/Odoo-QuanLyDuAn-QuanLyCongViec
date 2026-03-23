@@ -14,6 +14,17 @@ class ProjectTask(models.Model):
     _inherit = 'project.task'
     
     # ==================== FIELDS ====================
+    checklist_ids = fields.One2many(
+        'project.task.checklist', 
+        'task_id', 
+        string='Danh sách kiểm tra (AI Suggest)'
+    )
+    
+    ai_sop = fields.Html(
+        string='Quy trình thực hiện (AI SOP)',
+        help='Quy trình chi tiết do AI gợi ý cho công việc này'
+    )
+    
     nhan_vien_ids = fields.Many2many(
         comodel_name='hr.employee',
         relation='project_task_employee_rel',
@@ -25,6 +36,19 @@ class ProjectTask(models.Model):
     
     task_status_class = fields.Char(compute='_compute_task_status', store=False)
     task_status_label = fields.Char(compute='_compute_task_status', store=False)
+
+    # --- KPI Automation Fields ---
+    date_completed = fields.Datetime(
+        string='Ngày hoàn thành thực tế', 
+        readonly=True, 
+        copy=False
+    )
+    kpi_rating = fields.Selection([
+        ('a', 'Xuất sắc (A)'),
+        ('b', 'Tốt (B)'),
+        ('c', 'Trung bình (C)'),
+        ('d', 'Trễ hạn (D)')
+    ], string='Xếp loại KPI', readonly=True, copy=False)
 
     # Ghi đè field date_deadline để thêm giá trị mặc định (7 ngày tới)
     date_deadline = fields.Date(
@@ -87,6 +111,133 @@ class ProjectTask(models.Model):
             else:
                 task.task_status_class = ''
                 task.task_status_label = ''
+
+    # ==================== OVERRIDE METHODS ====================
+    
+    @api.model
+    def create(self, vals):
+        """Override create to send email notification on initial assignment"""
+        task = super(ProjectTask, self).create(vals)
+        if task.nhan_vien_ids:
+            task._send_assignment_email(task.nhan_vien_ids)
+        return task
+
+    def write(self, vals):
+        """
+        Ghi đè hàm write để bắt sự kiện thay đổi Stage -> Tính KPI
+        Và bắt sự kiện giao việc -> Gửi mail thông báo
+        """
+        # --- Logic Gửi mail thông báo (Mức 2) ---
+        if 'nhan_vien_ids' in vals:
+            for task in self:
+                # Lấy danh sách ID nhân viên trước khi update
+                old_employee_ids = task.nhan_vien_ids.ids
+                
+                # Thực hiện ghi đè để lấy dữ liệu mới
+                res = super(ProjectTask, task).write(vals)
+                
+                # Tìm ra những nhân viên mới được thêm vào (mới giao việc)
+                new_employee_ids = task.nhan_vien_ids.ids
+                added_employee_ids = list(set(new_employee_ids) - set(old_employee_ids))
+                
+                if added_employee_ids:
+                    added_employees = self.env['hr.employee'].browse(added_employee_ids)
+                    task._send_assignment_email(added_employees)
+            
+            # Nếu đã xử lý write ở trên rồi thì return True luôn để tránh gọi super lần nữa bên dưới
+            # Tuy nhiên để an toàn và giữ flow KPI bên dưới, ta chỉ xử lý logic gửi mail ở đây
+            # và để flow tiếp tục xuống dưới.
+        
+        # --- Logic KPI (Đã có sẵn) ---
+        # Nếu có cập nhật Stage (kéo thả Kanban hoặc chọn trên Form)
+        if 'stage_id' in vals:
+            for task in self:
+                new_stage = self.env['project.task.type'].browse(vals['stage_id'])
+                
+                # Kiểm tra xem Stage mới có phải là Stage "Đóng" (Hoàn thành) không
+                is_done_stage = new_stage.fold or \
+                                getattr(new_stage, 'is_closed', False) or \
+                                any(k in new_stage.name.lower() for k in ['xong', 'giao', 'hoàn thành', 'done'])
+                
+                # Nếu chuyển từ trạng thái chưa xong -> Xong
+                if is_done_stage:
+                    # 1. Ghi nhận thời gian hoàn thành
+                    now = fields.Datetime.now()
+                    vals['date_completed'] = now
+                    
+                    # 2. Tính toán KPI nếu có Deadline
+                    if task.date_deadline:
+                        deadline_dt = fields.Datetime.to_datetime(task.date_deadline)
+                        # Chuyển deadline sang cuối ngày (23:59:59) để công bằng
+                        deadline_end = deadline_dt.replace(hour=23, minute=59, second=59)
+                        
+                        diff = (deadline_end - now).total_seconds() / 3600 # Số giờ chênh lệch
+                        
+                        if diff > 24: # Xong trước 1 ngày trở lên
+                            vals['kpi_rating'] = 'a'
+                        elif diff >= 0: # Xong đúng hạn (trong vòng 24h trước deadline)
+                            vals['kpi_rating'] = 'b'
+                        elif diff > -72: # Trễ dưới 3 ngày (72h)
+                            vals['kpi_rating'] = 'c'
+                        else: # Trễ trên 3 ngày
+                            vals['kpi_rating'] = 'd'
+                
+                # Nếu kéo ngược từ Xong về Chưa Xong -> Reset KPI (tùy chọn)
+                else:
+                    vals['date_completed'] = False
+                    vals['kpi_rating'] = False
+
+        return super(ProjectTask, self).write(vals)
+
+    def _send_assignment_email(self, employees):
+        """Hàm phụ trợ gửi email cho danh sách nhân viên"""
+        template = self.env.ref('quan_ly_du_an.email_template_task_assignment', raise_if_not_found=False)
+        if not template:
+            return
+            
+        for task in self:
+            # Lọc ra những nhân viên có email công việc
+            employees_with_email = employees.filtered(lambda e: e.work_email)
+            if not employees_with_email:
+                continue
+                
+            # Gửi mail (force_send=True để gửi ngay lập tức thay vì đợi cron)
+            # Ta tạo một bản sao template để override email_to cho từng nhóm giao việc
+            template.with_context(employees=employees_with_email).send_mail(
+                task.id, 
+                force_send=True,
+                email_values={'email_to': ','.join(employees_with_email.mapped('work_email'))}
+            )
+
+    @api.model
+    def _cron_send_deadline_reminders(self):
+        """Hàm chạy định kỳ để nhắc nhở các task sắp đến hạn (Mức 2)"""
+        # Tìm các task chưa xong và có hạn chót là ngày mai
+        tomorrow = fields.Date.today() + timedelta(days=1)
+        tasks_to_remind = self.search([
+            ('date_deadline', '=', tomorrow),
+            ('stage_id.fold', '=', False),
+            ('stage_id.is_closed', '=', False),
+            ('stage_id.name', 'not ilike', 'xong'),
+            ('stage_id.name', 'not ilike', 'hoàn thành'),
+            ('stage_id.name', 'not ilike', 'đã giao'),
+            ('stage_id.name', 'not ilike', 'done')
+        ])
+        
+        template = self.env.ref('quan_ly_du_an.email_template_task_deadline_reminder', raise_if_not_found=False)
+        if not template:
+            return
+            
+        for task in tasks_to_remind:
+            if task.nhan_vien_ids:
+                # Gửi mail cho tất cả nhân viên thực hiện có email
+                employees_with_email = task.nhan_vien_ids.filtered(lambda e: e.work_email)
+                if employees_with_email:
+                    template.send_mail(
+                        task.id, 
+                        force_send=True,
+                        email_values={'email_to': ','.join(employees_with_email.mapped('work_email'))}
+                    )
 
     # ==================== ONCHANGE METHODS ====================
     

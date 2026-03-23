@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- View Graph cho KPI -->
+    <record id="view_project_task_kpi_graph" model="ir.ui.view">
+        <field name="name">project.task.kpi.graph</field>
+        <field name="model">project.task</field>
+        <field name="arch" type="xml">
+            <graph string="Thống kê KPI" type="bar" sample="1">
+                <field name="project_id"/>
+                <field name="kpi_rating"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- View Pivot cho Phân tích Hiệu suất -->
+    <record id="view_project_task_kpi_pivot" model="ir.ui.view">
+        <field name="name">project.task.kpi.pivot</field>
+        <field name="model">project.task</field>
+        <field name="arch" type="xml">
+            <pivot string="Phân tích Hiệu suất" sample="1">
+                <field name="project_id" type="row"/>
+                <field name="kpi_rating" type="col"/>
+                <field name="id" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Action mở Dashboard -->
+    <record id="action_project_kpi_dashboard" model="ir.actions.act_window">
+        <field name="name">Báo cáo KPI &amp; Hiệu suất</field>
+        <field name="res_model">project.task</field>
+        <field name="view_mode">graph,pivot</field>
+        <field name="view_id" ref="view_project_task_kpi_graph"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Chưa có dữ liệu để hiển thị báo cáo.
+            </p>
+            <p>
+                Hãy hoàn thành ít nhất một công việc để AI bắt đầu tính toán KPI.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Dashbard -->
+    <menuitem id="menu_project_kpi_dashboard"
+              name="Báo cáo KPI"
+              parent="project.menu_main_pm"
+              action="action_project_kpi_dashboard"
+              sequence="50"/>
+</odoo>

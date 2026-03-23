@@ -27,6 +27,15 @@
                 </group>
             </xpath>
             
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_employee_tasks" type="object" class="oe_stat_button" icon="fa-tasks">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_text">Công việc</span>
+                        <span class="o_stat_value"><field name="task_done_count"/></span>
+                    </div>
+                </button>
+            </xpath>
+
             <!-- 2. Đưa ds Gia đình và Quá trình công tác xuống phía dưới cùng của tab Thông tin cá nhân -->
             <xpath expr="//page[@name='personal_information']/group" position="after">
                 <separator string="Gia đình"/>
@@ -48,6 +57,26 @@
                         <field name="date_end"/>
                     </tree>
                 </field>
+            </xpath>
+
+            <!-- 3. Thêm tab Hiệu suất công việc (Mức 2) -->
+            <xpath expr="//notebook" position="inside">
+                <page name="project_performance" string="Hiệu suất dự án">
+                    <group>
+                        <group string="Thống kê KPI">
+                            <field name="kpi_average" widget="progressbar"/>
+                            <field name="task_done_count"/>
+                            <field name="task_late_count" decoration-danger="task_late_count > 0"/>
+                        </group>
+                        <group string="Phân tích">
+                            <div class="alert alert-info" role="alert" colspan="2">
+                                <i class="fa fa-info-circle"></i> 
+                                Dữ liệu này được tổng hợp tự động từ tất cả các dự án mà nhân viên này tham gia.
+                                Điểm KPI trung bình dựa trên thang điểm 100 (A=100, B=80, C=60, D=40).
+                            </div>
+                        </group>
+                    </group>
+                </page>
             </xpath>
             
         </field>

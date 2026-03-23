@@ -43,10 +43,12 @@
     'data': [
         'security/ir.model.access.csv',
         'data/project_task_type_data.xml',
+        'data/mail_data.xml',
         'views/hr_employee_views.xml',
         'views/project_project_views.xml',
         'views/project_task_views.xml',
         'views/project_type_views.xml',
+        'views/project_dashboard_views.xml',
         'wizard/ai_task_generator_wizard_views.xml',
         'views/menu.xml',
     ],

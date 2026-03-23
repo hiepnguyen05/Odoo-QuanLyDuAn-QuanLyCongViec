@@ -9,7 +9,7 @@
         <field name="arch" type="xml">
             
             <xpath expr="//header" position="inside">
-                <button name="action_generate_tasks_ai" type="object" string="🤖 Gợi ý công việc bằng AI" class="oe_highlight" title="AI sẽ tự sinh thẻ Công Việc và phân cột Kanban"/>
+                <button name="action_generate_tasks_ai" type="object" string="Gợi ý công việc bằng AI" class="oe_highlight" title="AI sẽ tự sinh thẻ Công Việc và phân cột Kanban"/>
             </xpath>
 
             <!-- Thêm field ở cuối sheet -->
@@ -31,6 +31,7 @@
                     </div>
                 </button>
             </xpath>
+            
             
         </field>
     </record>
