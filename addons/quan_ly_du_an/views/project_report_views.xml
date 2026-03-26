@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Graph View: Phân tích Công việc (Linh hoạt GROUP BY) -->
+    <record id="view_project_task_graph_report" model="ir.ui.view">
+        <field name="name">project.task.graph.report</field>
+        <field name="model">project.task</field>
+        <field name="arch" type="xml">
+            <graph string="Phân tích công việc" type="bar" sample="1">
+                <field name="nhan_vien_ids"/>
+                <field name="stage_id"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Pivot View: Chi tiết phân tích -->
+    <record id="view_project_task_pivot_report" model="ir.ui.view">
+        <field name="name">project.task.pivot.report</field>
+        <field name="model">project.task</field>
+        <field name="arch" type="xml">
+            <pivot string="Bảng phân tích chi tiết" sample="1">
+                <field name="project_id" type="row"/>
+                <field name="stage_id" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Action 1: Cân bằng tải (Group by Nhân viên) -->
+    <record id="action_project_workload_report" model="ir.actions.act_window">
+        <field name="name">Biểu đồ Cân bằng tải</field>
+        <field name="res_model">project.task</field>
+        <field name="view_mode">graph,pivot</field>
+        <field name="view_id" ref="view_project_task_graph_report"/>
+        <field name="context">{
+            'group_by': ['nhan_vien_ids'],
+            'graph_mode': 'bar',
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Chưa có dữ liệu để phân tích cân bằng tải.
+            </p>
+        </field>
+    </record>
+
+    <!-- Action 2: Sức khỏe dự án (Group by Trạng thái - Pie chart) -->
+    <record id="action_project_health_report" model="ir.actions.act_window">
+        <field name="name">Biểu đồ Sức khỏe Dự án</field>
+        <field name="res_model">project.task</field>
+        <field name="view_mode">graph,pivot</field>
+        <field name="view_id" ref="view_project_task_graph_report"/>
+        <field name="context">{
+            'group_by': ['stage_id'],
+            'graph_type': 'pie',
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Chưa có dữ liệu trạng thái công việc.
+            </p>
+        </field>
+    </record>
+
+</odoo>

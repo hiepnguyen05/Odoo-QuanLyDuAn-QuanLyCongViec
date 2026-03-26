@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Root Menu -->
+    <record id="menu_quan_ly_cong_viec_root" model="ir.ui.menu">
+        <field name="name">Quản lý Công việc</field>
+        <field name="sequence">20</field>
+        <field name="web_icon">project,static/description/icon.png</field>
+    </record>
+
+    <!-- Submenu Category -->
+    <record id="menu_work_management_tasks" model="ir.ui.menu">
+        <field name="name">Công việc</field>
+        <field name="parent_id" ref="menu_quan_ly_cong_viec_root"/>
+        <field name="sequence">10</field>
+    </record>
+
+    <!-- Menu Actions -->
+    <record id="menu_action_my_tasks" model="ir.ui.menu">
+        <field name="name">Việc của tôi</field>
+        <field name="parent_id" ref="menu_work_management_tasks"/>
+        <field name="action" ref="project.action_view_task"/>
+        <field name="sequence">10</field>
+    </record>
+
+    <record id="menu_action_all_tasks" model="ir.ui.menu">
+        <field name="name">Tất cả công việc</field>
+        <field name="parent_id" ref="menu_work_management_tasks"/>
+        <field name="action" ref="project.action_view_task"/>
+        <field name="sequence">20</field>
+    </record>
+
+    <record id="menu_work_report" model="ir.ui.menu">
+        <field name="name">Báo cáo hiệu suất</field>
+        <field name="parent_id" ref="menu_quan_ly_cong_viec_root"/>
+        <field name="action" ref="project.rating_rating_action_project_report"/>
+        <field name="sequence">30</field>
+    </record>
+</odoo>

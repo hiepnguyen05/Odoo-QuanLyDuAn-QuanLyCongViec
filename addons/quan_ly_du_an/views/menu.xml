@@ -1,7 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     
-    <!-- Menu chính đã có sẵn từ module project và hr của Odoo -->
-    <!-- Module này chỉ mở rộng, không tạo menu mới -->
+    <!-- Menu Báo cáo tập trung -->
+    <menuitem id="menu_project_report_root"
+              name="Báo cáo &amp; Phân tích"
+              parent="project.menu_main_pm"
+              sequence="50"/>
+
+    <menuitem id="menu_project_workload_report"
+              name="Cân bằng tải nhân sự"
+              parent="menu_project_report_root"
+              action="action_project_workload_report"
+              sequence="10"/>
+
+    <menuitem id="menu_project_health_report"
+              name="Sức khỏe Dự án"
+              parent="menu_project_report_root"
+              action="action_project_health_report"
+              sequence="20"/>
     
 </odoo>

@@ -811,6 +811,7 @@
             <field name="arch" type="xml">
                 <form string="Task" class="o_form_project_tasks" js_class="project_form">
                     <field name="allow_subtasks" invisible="1" />
+                    <field name="company_id" invisible="1" />
                     <field name="is_closed" invisible="1" />
                     <field name="allow_recurring_tasks" invisible="1" />
                     <field name="repeat_show_dow" invisible="1" />
