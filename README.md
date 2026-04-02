@@ -55,7 +55,8 @@ Dự án được thiết kế để giải quyết bài toán quản trị dự
 
 #### 2.1.1. Tải project.
 ```
-git clone https://github.com/FIT-DNU/Business-Internship.git
+git clone https://github.com/hiepnguyen05/Odoo-QuanLyDuAn-QuanLyCongViec.git
+cd Odoo-QuanLyDuAn-QuanLyCongViec
 ```
 #### 2.1.2. Cài đặt các thư viện cần thiết
 Người sử dụng thực thi các lệnh sau đề cài đặt các thư viện cần thiết
