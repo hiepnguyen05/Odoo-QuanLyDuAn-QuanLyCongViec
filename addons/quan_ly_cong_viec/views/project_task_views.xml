@@ -13,13 +13,6 @@
                 <field name="parent_id" invisible="1"/>
             </xpath>
             
-            <xpath expr="//field[@name='user_ids']" position="before">
-                <div class="alert alert-warning" role="alert" 
-                     attrs="{'invisible': [('project_id', '=', False)]}">
-                    <strong>⚠️ Lưu ý phân quyền:</strong>
-                    <p>Chỉ được gán công việc cho nhân viên thuộc dự án này.</p>
-                </div>
-            </xpath>
             <xpath expr="//field[@name='user_ids']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
@@ -33,7 +26,7 @@
             </xpath>
 
             <xpath expr="//group" position="after">
-                <group string="📊 Đánh giá kết quả (KPI)" name="kpi_data" 
+                <group string="Đánh giá kết quả (KPI)" name="kpi_data" 
                        attrs="{'invisible': [('date_completed', '=', False)]}">
                     <group>
                         <field name="date_completed"/>
@@ -42,7 +35,7 @@
                     <group>
                         <div class="alert alert-info" role="alert" style="margin-bottom: 0px;" 
                              attrs="{'invisible': [('kpi_rating', '=', False)]}">
-                            <strong>💡 Cách tính:</strong> KPI được tự động xếp loại khi bạn chuyển công việc sang trạng thái Hoàn thành.
+                            <strong>Cách tính:</strong> KPI được tự động xếp loại khi bạn chuyển công việc sang trạng thái Hoàn thành.
                         </div>
                     </group>
                 </group>
@@ -62,6 +55,19 @@
                     </field>
                 </page>
                 <page name="ai_guidance" string="Hướng dẫn AI &amp; Checklist">
+                    <group>
+                        <div class="oe_title" style="margin-bottom: 20px;">
+                            <label for="task_summary" string="Tóm tắt nhanh bằng AI"/>
+                            <div class="d-flex align-items-center">
+                                <field name="task_summary" placeholder="AI sẽ tóm tắt nội dung tại đây..." class="flex-grow-1"/>
+                                <button name="action_summarize_task_ai" 
+                                        type="object" 
+                                        string="Tóm tắt bằng AI" 
+                                        class="btn-primary ms-2" 
+                                        help="Bấm để AI tóm tắt nội dung mô tả công việc"/>
+                            </div>
+                        </div>
+                    </group>
                     <group>
                         <group string="Quy trình thực hiện (SOP)">
                             <field name="ai_sop" nolabel="1" placeholder="AI sẽ viết quy trình ở đây..."/>
@@ -86,14 +92,44 @@
         <field name="model">project.task</field>
         <field name="inherit_id" ref="project.view_task_search_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="project_id" string="Dự án"/>
+                <field name="nhan_vien_ids" string="Nhân viên"/>
+            </xpath>
             <xpath expr="//filter[@name='my_tasks']" position="after">
                 <separator/>
                 <filter string="Việc của tôi (HRM)" 
                         name="my_tasks_hrm" 
                         domain="[('nhan_vien_ids.user_id', '=', uid)]"/>
-                <filter string="Lọc theo Dự án" name="group_by_project" context="{'group_by': 'project_id'}"/>
-                <filter string="Lọc theo Nhân viên" name="group_by_employee" context="{'group_by': 'nhan_vien_ids'}"/>
-                <filter string="Lọc theo Trạng thái" name="group_by_stage" context="{'group_by': 'stage_id'}"/>
+                <separator/>
+                <filter string="Quá hạn" name="overdue" domain="[('date_deadline', '&lt;', context_today().strftime('%Y-%m-%d')), ('is_closed', '=', False)]"/>
+                <filter string="Hôm nay" name="deadline_today" domain="[('date_deadline', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter string="Tuần này" name="deadline_week" domain="[('date_deadline', '&gt;=', context_today().strftime('%Y-%m-%d')), ('date_deadline', '&lt;=', (context_today() + datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <filter string="Đã hoàn thành" name="closed_tasks" domain="[('is_closed', '=', True)]"/>
+                <filter string="Đang thực hiện" name="open_tasks" domain="[('is_closed', '=', False)]"/>
+                
+                <group expand="0" string="Gom nhóm theo...">
+                    <filter string="Dự án" name="group_by_project" context="{'group_by': 'project_id'}"/>
+                    <filter string="Nhân viên thực hiện" name="group_by_employee" context="{'group_by': 'nhan_vien_ids'}"/>
+                    <filter string="Hạn chót (Tháng)" name="group_by_deadline" context="{'group_by': 'date_deadline:month'}"/>
+                    <filter string="Trạng thái" name="group_by_stage" context="{'group_by': 'stage_id'}"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- NEW Specialized Search View for Work Management (Includes Search Panel) -->
+    <record id="view_task_search_hrm_with_panel" model="ir.ui.view">
+        <field name="name">project.task.search.hrm.with.panel</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="view_task_search_inherit"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <searchpanel>
+                    <field name="project_id" string="Dự án" icon="fa-folder" enable_counters="1"/>
+                    <field name="stage_id" string="Trạng thái" icon="fa-tasks" enable_counters="1"/>
+                </searchpanel>
             </xpath>
         </field>
     </record>
@@ -128,37 +164,72 @@
                 <attribute name="quick_create">false</attribute>
             </xpath>
             <xpath expr="//kanban" position="inside">
+                <field name="project_id" invisible="1"/>
                 <field name="nhan_vien_ids"/>
                 <field name="completion_percentage"/>
+                <field name="date_deadline"/>
             </xpath>
+            <xpath expr="//field[@name='project_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            
+            <!-- 1. Đầu thẻ: Trạng thái & KPI (Gọn) -->
             <xpath expr="//strong[hasclass('o_kanban_record_title')]" position="before">
                 <field name="task_status_class" invisible="1"/>
                 <field name="task_status_label" invisible="1"/>
-                <div t-if="record.task_status_label.raw_value" style="margin-bottom: 5px;">
-                    <span t-attf-class="badge #{record.task_status_class.raw_value}" style="font-size: 11px; padding: 4px 8px; border-radius: 4px;">
+                <div class="d-flex align-items-center mb-1" t-if="record.task_status_label.raw_value">
+                    <span t-attf-class="badge #{record.task_status_class.raw_value}" style="font-size: 10px; padding: 2px 6px;">
                         <t t-esc="record.task_status_label.raw_value"/>
                     </span>
                     <span t-if="record.kpi_rating.raw_value" 
-                          t-attf-class="badge #{record.kpi_rating.raw_value == 'a' and 'bg-primary' or (record.kpi_rating.raw_value == 'b' and 'bg-info' or (record.kpi_rating.raw_value == 'c' and 'bg-warning' or 'bg-dark'))}" 
-                          style="font-size: 11px; margin-left: 5px; padding: 4px 8px; border-radius: 4px;">
+                          t-attf-class="badge ms-1 #{record.kpi_rating.raw_value == 'a' and 'bg-primary' or (record.kpi_rating.raw_value == 'b' and 'bg-info' or (record.kpi_rating.raw_value == 'c' and 'bg-warning' or 'bg-dark'))}" 
+                          style="font-size: 10px; padding: 2px 6px;">
                         KPI: <field name="kpi_rating"/>
                     </span>
                 </div>
             </xpath>
-            <xpath expr="//div[hasclass('o_kanban_record_bottom')]" position="before">
-                <div style="margin-top: 5px;">
-                    <field name="completion_percentage" widget="progressbar"/>
+
+            <!-- 2. Thân thẻ: Tiêu đề & Dự án & Hạn chót (Dán khít) -->
+            <xpath expr="//strong[hasclass('o_kanban_record_title')]" position="after">
+                <div class="mt-0 mb-0" style="line-height: 1.1; font-size: 11px;">
+                    <!-- Link Dự án -->
+                    <button name="action_view_project_tasks" type="object" 
+                            class="btn btn-link p-0 text-muted fw-normal" 
+                            style="font-size: 11px; text-decoration: none; display: block;">
+                        <field name="project_id" invisible="0"/>
+                    </button>
+                    <!-- Hạn chót -->
+                    <div t-if="record.date_deadline.raw_value" 
+                         t-attf-class="mt-1 #{record.date_deadline.raw_value &lt; new Date() ? 'text-danger fw-bold' : 'text-muted'}"
+                         style="font-size: 10px;">
+                        <field name="date_deadline"/>
+                    </div>
                 </div>
-                <div style="margin-top: 8px; font-size: 12px; padding-top: 8px; border-top: 1px solid #eee;">
-                    <strong class="text-muted"><i class="fa fa-user-circle-o"></i> HRM: </strong>
-                    <field name="nhan_vien_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+            </xpath>
+
+            <!-- 3. XÓA BỎ TRIỆT ĐỂ o_kanban_record_body để triệt tiêu khoảng trắng -->
+            <xpath expr="//div[hasclass('o_kanban_record_body')]" position="replace">
+                <div class="d-none"/>
+            </xpath>
+
+            <!-- 4. Chân thẻ: Nhân viên & Tiến độ -->
+            <xpath expr="//div[hasclass('o_kanban_record_bottom')]" position="before">
+                <div class="mt-1 pt-1 border-top" style="font-size: 11px;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center flex-grow-1">
+                            <field name="nhan_vien_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+                        </div>
+                        <div t-if="record.completion_percentage.raw_value > 0" style="width: 40px;" class="ms-2">
+                             <field name="completion_percentage" widget="progressbar" style="height: 4px;"/>
+                        </div>
+                    </div>
                 </div>
             </xpath>
         </field>
     </record>
 
     <record id="action_generate_ai_from_task_menu" model="ir.actions.server">
-        <field name="name">Nhờ AI Gợi Ý Cột &amp; Công Việc</field>
+        <field name="name">Nhờ AI Gợi Ý Công Việc</field>
         <field name="model_id" ref="project.model_project_task"/>
         <field name="binding_model_id" ref="project.model_project_task"/>
         <field name="binding_view_types">list</field>
@@ -166,6 +237,49 @@
         <field name="code">
             if records:
                 action = records[0].action_generate_tasks_ai_from_task()
+        </field>
+    </record>
+
+    <!-- Calendar View -->
+    <record id="view_project_task_calendar_hrm" model="ir.ui.view">
+        <field name="name">project.task.calendar.hrm</field>
+        <field name="model">project.task</field>
+        <field name="arch" type="xml">
+            <calendar string="Lịch công việc" 
+                      date_start="planned_date_begin" 
+                      date_stop="date_deadline" 
+                      color="stage_id" 
+                      mode="month">
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="nhan_vien_ids" widget="many2many_tags"/>
+            </calendar>
+        </field>
+    </record>
+
+    <!-- Graph View -->
+    <record id="view_project_task_graph_hrm" model="ir.ui.view">
+        <field name="name">project.task.graph.hrm</field>
+        <field name="model">project.task</field>
+        <field name="arch" type="xml">
+            <graph string="Phân tích công việc" type="bar" sample="1">
+                <field name="stage_id"/>
+                <field name="project_id"/>
+                <field name="completion_percentage" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Pivot View -->
+    <record id="view_project_task_pivot_hrm" model="ir.ui.view">
+        <field name="name">project.task.pivot.hrm</field>
+        <field name="model">project.task</field>
+        <field name="arch" type="xml">
+            <pivot string="Bảng tổng hợp công việc" sample="1">
+                <field name="project_id" type="row"/>
+                <field name="stage_id" type="col"/>
+                <field name="completion_percentage" type="measure"/>
+            </pivot>
         </field>
     </record>
 

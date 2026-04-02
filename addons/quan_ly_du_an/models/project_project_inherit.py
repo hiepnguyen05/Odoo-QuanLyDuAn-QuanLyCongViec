@@ -9,6 +9,7 @@ from odoo.exceptions import ValidationError, UserError
 import requests
 import json
 import re
+import time
 
 
 class ProjectProject(models.Model):
@@ -26,15 +27,55 @@ class ProjectProject(models.Model):
     
     @api.model
     def create(self, vals):
-        # 1. Gọi hàm Create gốc của Odoo để hệ thống lưu Dự án này vào Database trước
+        # 1. Gọi hàm Create gốc của Odoo
         project = super(ProjectProject, self).create(vals)
         
-        # 2. Logic Automation Mức 2: Nếu Dự án có gắn "Loại", tiến hành Auto-Generate Tasks
+        # 2. Tự động gán và MỞ RỘNG 5 trạng thái CÔNG VIỆC (project.task.type)
+        task_stage_xml_ids = [
+            'quan_ly_du_an.project_stage_new',
+            'quan_ly_du_an.project_stage_in_progress',
+            'quan_ly_du_an.project_stage_paused',
+            'quan_ly_du_an.project_stage_done',
+            'quan_ly_du_an.project_stage_cancelled',
+        ]
+        standard_task_stages = self.env['project.task.type']
+        for xml_id in task_stage_xml_ids:
+            stage = self.env.ref(xml_id, raise_if_not_found=False)
+            if stage:
+                # Ép buộc mở rộng cột (Unfold) nếu đang bị đóng
+                if stage.fold:
+                    stage.sudo().write({'fold': False})
+                standard_task_stages |= stage
+                
+        if standard_task_stages:
+            # Sử dụng sudo() để tránh lỗi phân quyền khi gán trạng thái công việc
+            project.sudo().write({'type_ids': [(6, 0, standard_task_stages.ids)]})
+
+        # 3. Tự động gán và MỞ RỘNG trạng thái DỰ ÁN (project.project.stage)
+        project_stage_xml_ids = [
+            'quan_ly_du_an.project_project_stage_new',
+            'quan_ly_du_an.project_project_stage_in_progress',
+            'quan_ly_du_an.project_project_stage_paused',
+            'quan_ly_du_an.project_project_stage_done',
+            'quan_ly_du_an.project_project_stage_cancelled',
+        ]
+        
+        # Đảm bảo tất cả Project Stages cũng được mở rộng
+        for xml_id in project_stage_xml_ids:
+            p_stage = self.env.ref(xml_id, raise_if_not_found=False)
+            if p_stage and p_stage.fold:
+                p_stage.sudo().write({'fold': False})
+
+        if hasattr(project, 'stage_id'):
+            first_project_stage = self.env.ref(project_stage_xml_ids[0], raise_if_not_found=False)
+            if first_project_stage:
+                # Sử dụng sudo() vì trường stage_id yêu cầu quyền Kỹ thuật
+                project.sudo().stage_id = first_project_stage.id
+
+        # 3. Logic Automation Mức 2: Nếu Dự án có gắn "Loại", tiến hành Auto-Generate Tasks
         if project.project_type_id and project.project_type_id.task_template_ids:
             task_env = self.env['project.task']
-            # Duyệt qua từng công việc mẫu của Loại này
             for template in project.project_type_id.task_template_ids:
-                # Đẻ ra các công việc con (Task) và map project_id về đúng Dự án mới
                 task_env.create({
                     'name': template.name,
                     'description': template.description,
@@ -42,7 +83,8 @@ class ProjectProject(models.Model):
                     'sequence': template.sequence,
                 })
         
-        return project    
+        return project
+    
     thanh_vien_ids = fields.Many2many(
         comodel_name='hr.employee',
         relation='project_employee_rel',
@@ -98,8 +140,6 @@ class ProjectProject(models.Model):
                         any(keyword in t.stage_id.name.lower() for keyword in ['xong', 'giao', 'hoàn thành', 'done'])
                     )
                 )
-                project.progress = (len(completed_tasks) / len(tasks)) * 100
-                
                 project.progress = (len(completed_tasks) / len(tasks)) * 100
             else:
                 project.progress = 0.0
@@ -186,24 +226,20 @@ class ProjectProject(models.Model):
                               "Vui lòng vào 'Thiết lập' -> 'Kỹ thuật' -> 'Thông số hệ thống' \n"
                               "và tạo mới thông số có Khóa (Key) là 'gemini.api_key' rồi dán API key của bạn vào Giá trị (Value)."))
                               
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+        # Danh sách model thử lần lượt (từ mới nhất đến cũ nhất, đã loại bỏ gemini-pro bị Google ngừng hỗ trợ)
+        model_candidates = [
+            'gemini-2.5-flash',
+            'gemini-2.0-flash',
+            'gemini-2.0-flash-lite',
+        ]
         
         # Tạo Prompt gửi cho Gemini
         prompt = f"""
         Tôi đang quản lý một dự án có tên là: "{self.name}".
         Hãy đóng vai là một chuyên gia quản lý dự án, phân tích và gợi ý cho tôi danh sách từ 5 đến 7 công việc chi tiết cần thực hiện cho dự án này.
         
-        Về Tên Cột Kanban (stage_name), hãy xem xét phân loại các công việc dựa trên một trong các Mẫu (Template) Kanban tiêu chuẩn sau đây nếu phù hợp với ngữ cảnh:
-        1. Phát triển phần mềm: Chưa thực hiện, Đặc điểm, Phát triển, Chạy thử, Đã giao
-        2. Agile Scrum: Backlog, Trực Nhật, Đang thực hiện, Hoàn thành
-        3. Tiếp thị số: Ý tưởng, Đang lên kế hoạch, Đang chạy, Đã xong
-        4. Thiết kế: Yêu cầu, Lên ý tưởng, Thiết kế sơ bộ, Chờ duyệt, Hoàn thiện
-        5. Cơ bản: Cần làm, Đang làm, Hoàn thành
-        Nếu dự án mang tính chất đặc thù khác, bạn có thể tự đưa ra các tên Cột Kanban hợp lý nhất.
-        
         Trả lời BẮT BUỘC chỉ bằng một Object JSON nguyên chất, định dạng chính xác phân tích cú pháp được, với cấu trúc như sau:
         {{
-            "kanban_stages": "Việc cần làm, Phân tích, Lập trình, Chạy thử, Đã hoàn thành",
             "tasks": [
                 {{
                     "name": "Tên công việc 1", 
@@ -222,7 +258,6 @@ class ProjectProject(models.Model):
         Lưu ý: 
         - "sop" là quy trình thực hiện chi tiết (Standard Operating Procedure) dưới dạng HTML.
         - "checklist" là các đầu mục kiểm tra nhỏ, phân tách bằng dấu phẩy.
-        - "kanban_stages" là chuỗi các tên cột cách nhau bởi dấu phẩy.
         Không có thêm bất kỳ văn bản nào khác ngoài Object JSON này.
         """
         
@@ -232,66 +267,91 @@ class ProjectProject(models.Model):
         }
         
         try:
-            # Gửi Request
-            response = requests.post(url, headers=headers, data=json.dumps(data), timeout=30)
-            
-            if response.status_code == 200:
-                result_json = response.json()
+            # Thử lần lượt các model cho đến khi tìm được model khả dụng
+            last_error = None
+            response = None
+            for model_name in model_candidates:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+                try:
+                    response = requests.post(url, headers=headers, data=json.dumps(data), timeout=30)
+                except Exception as e:
+                    last_error = str(e)
+                    response = None
+                    continue
                 
-                # Bóc tách câu trả lời của AI
-                if 'candidates' in result_json and len(result_json['candidates']) > 0:
-                    text_response = result_json['candidates'][0]['content']['parts'][0]['text']
-                    
-                    # Cố gắng dọn dẹp markdown code block
-                    cleaned_text = re.sub(r'```json\n|```', '', text_response).strip()
-                    
-                    try:
-                        # Parse JSON thành dictionary
-                        result_dict = json.loads(cleaned_text)
-                        
-                        tasks_data = result_dict.get('tasks', [])
-                        kanban_stages_str = result_dict.get('kanban_stages', '')
-                        
-                        # Thay vì tạo Task ngay, Ta tạo Data cho Wizard
-                        wizard_lines = []
-                        for task_dict in tasks_data:
-                            task_name = task_dict.get('name')
-                            if task_name:
-                                wizard_lines.append((0, 0, {
-                                    'name': task_name,
-                                    'description': task_dict.get('description', ''),
-                                    'ai_sop': task_dict.get('sop', ''),
-                                    'checklist_raw': task_dict.get('checklist', ''),
-                                }))
-                                
-                        if wizard_lines or kanban_stages_str:
-                            # Tạo bản ghi Wizard trong RAM
-                            wizard = self.env['ai.task.generator.wizard'].create({
-                                'project_id': self.id,
-                                'suggested_kanban_stages': kanban_stages_str,
-                                'line_ids': wizard_lines
-                            })
-                            
-                            # Trả về Action mở Popup Wizard để User sửa
-                            return {
-                                'name': _('Check & Edit Gợi ý Của AI'),
-                                'type': 'ir.actions.act_window',
-                                'res_model': 'ai.task.generator.wizard',
-                                'res_id': wizard.id,
-                                'view_mode': 'form',
-                                'target': 'new', # Mở Popup
-                            }
-                        else:
-                            raise UserError(_("AI trả về kết quả nhưng không có công việc nào hợp lệ được tìm thấy."))
-                            
-                    except json.JSONDecodeError:
-                        raise UserError(_(f"Không thể phân tích dữ liệu AI trả về do sai định dạng JSON.\nDữ liệu thô AI trả về:\n{text_response}"))
-                        
+                if response.status_code == 200:
+                    break  # Tìm được model hoạt động
+                elif response.status_code == 429:
+                    last_error = f"Model {model_name} hết hạn mức (429)."
+                    time.sleep(5)
+                    continue
+                elif response.status_code == 404:
+                    last_error = f"Model {model_name} không tìm thấy (404)."
+                    continue
                 else:
-                    raise UserError(_("Gemini API không có câu trả lời (candidates list rỗng)."))
+                    last_error = f"Lỗi từ model {model_name}: {response.status_code}"
+                    continue
+
+            if not response or response.status_code != 200:
+                raise UserError(_(
+                    "Tất cả các model AI đều đang bận hoặc hết hạn mức.\n\n"
+                    "Giải pháp:\n"
+                    "1. Vui lòng đợi khoảng 1 phút rồi nhấn lại nút Gợi ý.\n"
+                    "2. Hoặc cấu hình API Key mới trong Thông số hệ thống.\n\n"
+                    f"Chi tiết: {last_error}"
+                ))
+            
+            result_json = response.json()
+            
+            # Bóc tách câu trả lời của AI
+            if 'candidates' in result_json and len(result_json['candidates']) > 0:
+                text_response = result_json['candidates'][0]['content']['parts'][0]['text']
+                
+                # Cố gắng dọn dẹp markdown code block
+                cleaned_text = re.sub(r'```json\n|```', '', text_response).strip()
+                
+                try:
+                    # Parse JSON thành dictionary
+                    result_dict = json.loads(cleaned_text)
+                    
+                    tasks_data = result_dict.get('tasks', [])
+                    
+                    # Thay vì tạo Task ngay, Ta tạo Data cho Wizard
+                    wizard_lines = []
+                    for task_dict in tasks_data:
+                        task_name = task_dict.get('name')
+                        if task_name:
+                            wizard_lines.append((0, 0, {
+                                'name': task_name,
+                                'description': task_dict.get('description', ''),
+                                'ai_sop': task_dict.get('sop', ''),
+                                'checklist_raw': task_dict.get('checklist', ''),
+                            }))
+                            
+                    if wizard_lines:
+                        # Tạo bản ghi Wizard trong RAM
+                        wizard = self.env['ai.task.generator.wizard'].create({
+                            'project_id': self.id,
+                            'line_ids': wizard_lines
+                        })
+                        
+                        # Trả về Action mở Popup Wizard để User sửa
+                        return {
+                            'name': _('Check & Edit Gợi ý Của AI'),
+                            'type': 'ir.actions.act_window',
+                            'res_model': 'ai.task.generator.wizard',
+                            'res_id': wizard.id,
+                            'view_mode': 'form',
+                            'target': 'new', # Mở Popup
+                        }
+                    else:
+                        raise UserError(_("AI trả về kết quả nhưng không có công việc nào hợp lệ được tìm thấy."))
+                        
+                except json.JSONDecodeError:
+                    raise UserError(_(f"Không thể phân tích dữ liệu AI trả về do sai định dạng JSON.\nDữ liệu thô AI trả về:\n{text_response}"))
                     
             else:
-                raise UserError(_(f"Lỗi khi gọi API Gemini.\nMã lỗi: {response.status_code}\nChi tiết: {response.text}"))
+                raise UserError(_("Gemini API không có câu trả lời (candidates list rỗng)."))
                 
         except requests.exceptions.Timeout:
             raise UserError(_("Kết nối tới Gemini API bị quá hạn (Timeout). Vui lòng thử lại sau."))
@@ -299,3 +359,4 @@ class ProjectProject(models.Model):
             raise UserError(_("Không thể kết nối đến Gemini API. Vui lòng kiểm tra lại mạng."))
         except Exception as e:
             raise UserError(_(f"Có lỗi bất ngờ xảy ra khi dùng AI:\n{str(e)}"))
+

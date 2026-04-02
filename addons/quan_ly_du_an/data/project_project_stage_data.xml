@@ -1,44 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     
-    <!-- Giai đoạn: Mới -->
-    <record id="project_stage_new" model="project.task.type">
+    <!-- Giai đoạn Dự án: Mới -->
+    <record id="project_project_stage_new" model="project.project.stage">
         <field name="name">Mới</field>
         <field name="sequence">10</field>
         <field name="fold" eval="False"/>
-        <field name="is_closed" eval="False"/>
     </record>
 
-    <!-- Giai đoạn: Đang thực hiện -->
-    <record id="project_stage_in_progress" model="project.task.type">
+    <!-- Giai đoạn Dự án: Đang thực hiện -->
+    <record id="project_project_stage_in_progress" model="project.project.stage">
         <field name="name">Đang thực hiện</field>
         <field name="sequence">20</field>
         <field name="fold" eval="False"/>
-        <field name="is_closed" eval="False"/>
     </record>
 
-    <!-- Giai đoạn: Tạm dừng -->
-    <record id="project_stage_paused" model="project.task.type">
+    <!-- Giai đoạn Dự án: Tạm dừng -->
+    <record id="project_project_stage_paused" model="project.project.stage">
         <field name="name">Tạm dừng</field>
         <field name="sequence">30</field>
         <field name="fold" eval="False"/>
-        <field name="is_closed" eval="False"/>
     </record>
 
-    <!-- Giai đoạn: Đã hoàn thành -->
-    <record id="project_stage_done" model="project.task.type">
+    <!-- Giai đoạn Dự án: Đã hoàn thành -->
+    <record id="project_project_stage_done" model="project.project.stage">
         <field name="name">Đã hoàn thành</field>
         <field name="sequence">40</field>
         <field name="fold" eval="False"/>
-        <field name="is_closed" eval="True"/>
     </record>
 
-    <!-- Giai đoạn: Đã hủy -->
-    <record id="project_stage_cancelled" model="project.task.type">
+    <!-- Giai đoạn Dự án: Đã hủy -->
+    <record id="project_project_stage_cancelled" model="project.project.stage">
         <field name="name">Đã hủy</field>
         <field name="sequence">50</field>
         <field name="fold" eval="False"/>
-        <field name="is_closed" eval="True"/>
     </record>
 
 </odoo>

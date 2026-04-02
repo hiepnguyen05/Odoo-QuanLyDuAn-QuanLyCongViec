@@ -1,10 +1,31 @@
 # -*- coding: utf-8 -*-
 from datetime import timedelta
-from odoo import models, fields, api
+from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
+from odoo.tools import html2plaintext
+import time
+
+class SubtaskHrm(models.Model):
+    _name = 'quan_ly_cong_viec.subtask'
+    _description = 'Dummy Model to fix Registry'
+
+class TaskBaseHrm(models.Model):
+    _name = 'quan_ly_cong_viec.task'
+    _description = 'Dummy Model to fix Registry 2'
 
 class ProjectTask(models.Model):
     _inherit = 'project.task'
+    
+    # Ghi đè stage_id để thêm group_expand, giúp luôn hiển thị đủ 5 cột Kanban chuẩn
+    stage_id = fields.Many2one(
+        'project.task.type', 
+        string='Giai đoạn', 
+        ondelete='restrict', 
+        tracking=True, 
+        index=True, 
+        copy=False,
+        group_expand='_read_group_stage_ids'
+    )
     
     checklist_ids = fields.One2many(
         'project.task.checklist', 
@@ -31,11 +52,17 @@ class ProjectTask(models.Model):
     completion_percentage = fields.Float(
         string='Tiến độ (%)', 
         compute='_compute_completion_percentage', 
-        store=True
+        store=True,
+        group_operator="avg"
     )
     
     task_status_class = fields.Char(compute='_compute_task_status', store=False)
     task_status_label = fields.Char(compute='_compute_task_status', store=False)
+
+    task_summary = fields.Text(
+        string='Tóm tắt công việc (AI)',
+        help='Bản tóm tắt ngắn gọn nội dung công việc do AI thực hiện'
+    )
 
     @api.depends('checklist_ids', 'checklist_ids.is_done')
     def _compute_completion_percentage(self):
@@ -90,18 +117,27 @@ class ProjectTask(models.Model):
     def _compute_task_status(self):
         today = fields.Date.context_today(self)
         for task in self:
-            if task.stage_id and (task.stage_id.fold or getattr(task.stage_id, 'is_closed', False) or any(k in task.stage_id.name.lower() for k in ['xong', 'giao', 'hoàn thành', 'done'])):
+            if not task.stage_id:
+                task.task_status_label = ''
+                task.task_status_class = ''
+                continue
+
+            # Nhãn luôn là tên của Stage (Trạng thái nào nhãn đấy)
+            task.task_status_label = task.stage_id.name
+            stage_name_lower = task.stage_id.name.lower()
+
+            # Xác định màu sắc dựa trên tính chất trạng thái
+            if any(k in stage_name_lower for k in ['hủy', 'cancel']):
+                task.task_status_class = 'bg-dark'
+            elif task.stage_id.fold or getattr(task.stage_id, 'is_closed', False) or \
+                 any(k in stage_name_lower for k in ['xong', 'giao', 'hoàn thành', 'done']):
                 task.task_status_class = 'bg-success'
-                task.task_status_label = 'Đã hoàn thành'
             elif task.date_deadline and task.date_deadline < today:
                 task.task_status_class = 'bg-danger'
-                task.task_status_label = 'Quá hạn'
             elif task.date_deadline and task.date_deadline == today:
                 task.task_status_class = 'bg-warning text-dark'
-                task.task_status_label = 'Hôm nay'
             else:
-                task.task_status_class = ''
-                task.task_status_label = ''
+                task.task_status_class = 'bg-info'
 
     @api.model
     def create(self, vals):
@@ -121,32 +157,50 @@ class ProjectTask(models.Model):
                     added_employees = self.env['hr.employee'].browse(added_employee_ids)
                     task._send_assignment_email(added_employees)
         
+        tasks_to_notify = self.env['project.task']
         if 'stage_id' in vals:
-            for task in self:
-                new_stage = self.env['project.task.type'].browse(vals['stage_id'])
-                is_done_stage = new_stage.fold or \
-                                getattr(new_stage, 'is_closed', False) or \
-                                any(k in new_stage.name.lower() for k in ['xong', 'giao', 'hoàn thành', 'done'])
-                if is_done_stage:
-                    now = fields.Datetime.now()
-                    vals['date_completed'] = now
-                    if task.date_deadline:
-                        deadline_dt = fields.Datetime.to_datetime(task.date_deadline)
-                        deadline_end = deadline_dt.replace(hour=23, minute=59, second=59)
-                        diff = (deadline_end - now).total_seconds() / 3600
-                        if diff > 24:
-                            vals['kpi_rating'] = 'a'
-                        elif diff >= 0:
-                            vals['kpi_rating'] = 'b'
-                        elif diff > -72:
-                            vals['kpi_rating'] = 'c'
-                        else:
-                            vals['kpi_rating'] = 'd'
-                else:
-                    vals['date_completed'] = False
-                    vals['kpi_rating'] = False
+            new_stage = self.env['project.task.type'].browse(vals['stage_id'])
+            is_done_stage = (new_stage.fold or getattr(new_stage, 'is_closed', False) or \
+                             any(k in new_stage.name.lower() for k in ['xong', 'giao', 'hoàn thành', 'done'])) and \
+                             not any(k in new_stage.name.lower() for k in ['hủy', 'cancel'])
 
-        return super(ProjectTask, self).write(vals)
+            for task in self:
+                # Chỉ xử lý nếu có sự chuyển trạng thái mới thực sự
+                if task.stage_id != new_stage:
+                    if is_done_stage:
+                        # Kiểm tra xem trước đó đã xong chưa để tránh gửi email lặp lại
+                        was_done = (task.stage_id.fold or getattr(task.stage_id, 'is_closed', False) or \
+                                   any(k in task.stage_id.name.lower() for k in ['xong', 'giao', 'hoàn thành', 'done'])) and \
+                                   not any(k in task.stage_id.name.lower() for k in ['hủy', 'cancel'])
+                        
+                        if not was_done:
+                            now = fields.Datetime.now()
+                            vals['date_completed'] = now
+                            if task.date_deadline:
+                                deadline_dt = fields.Datetime.to_datetime(task.date_deadline)
+                                deadline_end = deadline_dt.replace(hour=23, minute=59, second=59)
+                                diff = (deadline_end - now).total_seconds() / 3600
+                                if diff > 24:
+                                    vals['kpi_rating'] = 'a'
+                                elif diff >= 0:
+                                    vals['kpi_rating'] = 'b'
+                                elif diff > -72:
+                                    vals['kpi_rating'] = 'c'
+                                else:
+                                    vals['kpi_rating'] = 'd'
+                            
+                            tasks_to_notify |= task
+                    else:
+                        vals['date_completed'] = False
+                        vals['kpi_rating'] = False
+
+        res = super(ProjectTask, self).write(vals)
+        
+        # Gửi email sau khi dữ liệu đã được lưu vào database
+        if tasks_to_notify:
+            tasks_to_notify.sudo()._send_completion_email()
+            
+        return res
 
     def _send_assignment_email(self, employees):
         # Update ref to current module
@@ -162,6 +216,17 @@ class ProjectTask(models.Model):
                 force_send=True,
                 email_values={'email_to': ','.join(employees_with_email.mapped('work_email'))}
             )
+
+    def _send_completion_email(self):
+        """Gửi email thông báo khi công việc hoàn thành"""
+        template = self.env.ref('quan_ly_cong_viec.email_template_task_completed', raise_if_not_found=False)
+        if not template:
+            return
+        for task in self:
+            # Gửi cho Quản lý dự án (nếu có email)
+            recipient = task.project_id.user_id.email
+            if recipient:
+                template.send_mail(task.id, force_send=True)
 
     @api.model
     def _cron_send_deadline_reminders(self):
@@ -211,3 +276,128 @@ class ProjectTask(models.Model):
         if hasattr(project, 'action_generate_tasks_ai'):
             return project.action_generate_tasks_ai()
         return False
+
+    def action_summarize_task_ai(self):
+        """Gọi Gemini AI để tóm tắt nội dung công việc"""
+        self.ensure_one()
+        
+        # 1. Lấy nội dung đầu vào (dọn dẹp HTML từ Description, nếu không có lấy Name)
+        raw_text = self.description or self.name
+        if not raw_text:
+            raise ValidationError("❌ Cần có nội dung Mô tả để AI có thể tóm tắt.")
+            
+        # Dọn dẹp HTML để AI đọc text thuần tốt hơn
+        input_text = html2plaintext(raw_text).strip() if self.description else raw_text
+
+        # 2. Lấy API Key
+        api_key = self.env['ir.config_parameter'].sudo().get_param('gemini.api_key')
+        if not api_key:
+            raise ValidationError("❌ Chưa cấu hình API Key cho Gemini AI trong 'Thông số hệ thống'.")
+
+        # Danh sách model thử lần lượt (từ mới nhất đến cũ nhất, đã loại bỏ gemini-pro bị Google ngừng hỗ trợ)
+        model_candidates = [
+            'gemini-2.5-flash',
+            'gemini-2.0-flash',
+            'gemini-2.0-flash-lite',
+        ]
+        
+        prompt = f"""
+        Nhiệm vụ: Tóm tắt nội dung công việc sau đây một cách cực kỳ ngắn gọn, súc tích trong 1 đến 2 câu. 
+        Đảm bảo giữ lại các mốc thời gian hoặc yêu cầu quan trọng nhất nếu có.
+        
+        Nội dung cần tóm tắt:
+        ---
+        {input_text}
+        ---
+        Kết quả trả về chỉ bao gồm văn bản tóm tắt, không thêm bất kỳ dẫn giải nào khác.
+        """
+        
+        headers = {'Content-Type': 'application/json'}
+        data = {"contents": [{"parts": [{"text": prompt}]}]}
+        
+        try:
+            import requests
+            import json
+            
+            last_error = None
+            response = None
+            for model_name in model_candidates:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+                try:
+                    response = requests.post(url, headers=headers, data=json.dumps(data), timeout=30)
+                except Exception as e:
+                    last_error = str(e)
+                    response = None
+                    continue
+
+                if response.status_code == 200:
+                    break  # OK
+                elif response.status_code == 429:
+                    last_error = f"Model {model_name} hết hạn mức (429)."
+                    time.sleep(5)
+                    continue
+                elif response.status_code == 404:
+                    last_error = f"Model {model_name} không tìm thấy (404)."
+                    continue
+                else:
+                    last_error = f"Lỗi từ {model_name}: {response.status_code}"
+                    continue
+
+            if not response or response.status_code != 200:
+                raise ValidationError(_(
+                    "Tất cả các model AI đều đang bận hoặc hết hạn mức.\n\n"
+                    "Giải pháp:\n"
+                    "1. Vui lòng đợi khoảng 1 phút rồi nhấn lại nút Tóm tắt.\n"
+                    "2. Hoặc cấu hình API Key mới trong Thông số hệ thống.\n\n"
+                    f"Chi tiết: {last_error}"
+                ))
+
+            result = response.json()
+            if 'candidates' in result and result['candidates']:
+                summary = result['candidates'][0]['content']['parts'][0]['text']
+                self.task_summary = summary.strip()
+                return
+            else:
+                raise ValidationError(_("AI trả về kết quả rỗng (candidates list empty)."))
+                
+        except ValidationError:
+            raise
+        except Exception as e:
+            raise ValidationError(f"Có lỗi bất ngờ khi gọi AI: {str(e)}")
+
+    @api.model
+    def _read_group_stage_ids(self, stages, domain, order):
+        """
+        Luôn hiển thị 5 cột trạng thái chuẩn (Mới, Đang thực hiện, Tạm dừng, 
+        Đã hoàn thành, Đã hủy) trong màn hình Kanban, kể cả khi cột trống.
+        """
+        stage_xml_ids = [
+            'quan_ly_du_an.project_stage_new',
+            'quan_ly_du_an.project_stage_in_progress',
+            'quan_ly_du_an.project_stage_paused',
+            'quan_ly_du_an.project_stage_done',
+            'quan_ly_du_an.project_stage_cancelled',
+        ]
+        
+        # Tìm các stage dựa trên XML ID đã khai báo ở module quan_ly_du_an
+        standard_stages = self.env['project.task.type']
+        for xml_id in stage_xml_ids:
+            stage = self.env.ref(xml_id, raise_if_not_found=False)
+            if stage:
+                standard_stages |= stage
+        
+        # Trả về tập hợp các stage chuẩn để Odoo vẽ cột
+        return standard_stages
+
+    def action_view_project_tasks(self):
+        """Trả về action hiển thị danh sách công việc của dự án này"""
+        self.ensure_one()
+        return {
+            'name': _('Công việc của dự án: %s') % self.project_id.name,
+            'type': 'ir.actions.act_window',
+            'res_model': 'project.task',
+            'view_mode': 'kanban,tree,form',
+            'domain': [('project_id', '=', self.project_id.id)],
+            'context': {'default_project_id': self.project_id.id},
+            'target': 'current',
+        }

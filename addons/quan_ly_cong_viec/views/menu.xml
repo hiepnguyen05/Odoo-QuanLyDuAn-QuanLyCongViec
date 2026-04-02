@@ -2,7 +2,7 @@
 <odoo>
     <!-- Root Menu -->
     <record id="menu_quan_ly_cong_viec_root" model="ir.ui.menu">
-        <field name="name">Quản lý Công việc</field>
+        <field name="name">Công việc</field>
         <field name="sequence">20</field>
         <field name="web_icon">project,static/description/icon.png</field>
     </record>
@@ -14,11 +14,25 @@
         <field name="sequence">10</field>
     </record>
 
+    <!-- Action for My Tasks -->
+    <record id="action_view_my_tasks_hrm" model="ir.actions.act_window">
+        <field name="name">Việc của tôi</field>
+        <field name="res_model">project.task</field>
+        <field name="view_mode">kanban,tree,form,calendar,pivot,graph,activity</field>
+        <field name="search_view_id" ref="view_task_search_hrm_with_panel"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Bạn chưa có công việc nào được gán.
+            </p>
+        </field>
+        <field name="context">{'search_default_my_tasks_hrm': 1, 'default_user_ids': [(4, uid)], 'group_by': 'stage_id'}</field>
+    </record>
+
     <!-- Menu Actions -->
     <record id="menu_action_my_tasks" model="ir.ui.menu">
         <field name="name">Việc của tôi</field>
         <field name="parent_id" ref="menu_work_management_tasks"/>
-        <field name="action" ref="project.action_view_task"/>
+        <field name="action" ref="action_view_my_tasks_hrm"/>
         <field name="sequence">10</field>
     </record>
 
@@ -29,10 +43,108 @@
         <field name="sequence">20</field>
     </record>
 
-    <record id="menu_work_report" model="ir.ui.menu">
-        <field name="name">Báo cáo hiệu suất</field>
+    <!-- Action for All Tasks Report (Management) -->
+    <record id="action_work_report_all" model="ir.actions.act_window">
+        <field name="name">Báo cáo Hiệu suất</field>
+        <field name="res_model">project.task</field>
+        <field name="view_mode">graph,pivot,tree,form</field>
+        <field name="context">{'group_by': ['stage_id', 'nhan_vien_ids']}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Hệ thống chưa có dữ liệu để lập báo cáo.
+            </p>
+        </field>
+    </record>
+
+    <!-- Removed redundant sub-menu report as it will be moved to top bar -->
+
+
+    <!-- NEW ROOT MENUS FOR TOP NAV BAR (PURPLE BAR) -->
+
+    <!-- Action for Calendar Nav -->
+    <record id="action_task_calendar_nav" model="ir.actions.act_window">
+        <field name="name">Lịch công việc</field>
+        <field name="res_model">project.task</field>
+        <field name="view_mode">calendar,tree,form</field>
+        <field name="search_view_id" ref="view_task_search_hrm_with_panel"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Chưa có lịch công việc.</p>
+        </field>
+    </record>
+
+    <!-- Action for Graph Nav -->
+    <record id="action_task_graph_nav" model="ir.actions.act_window">
+        <field name="name">Biểu đồ phân tích</field>
+        <field name="res_model">project.task</field>
+        <field name="view_mode">graph,tree,form</field>
+        <field name="search_view_id" ref="view_task_search_hrm_with_panel"/>
+        <field name="context">{'group_by': ['project_id', 'stage_id']}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Chưa có dữ liệu biểu đồ.</p>
+        </field>
+    </record>
+
+    <!-- Action for Pivot Nav -->
+    <record id="action_task_pivot_nav" model="ir.actions.act_window">
+        <field name="name">Báo cáo tổng hợp</field>
+        <field name="res_model">project.task</field>
+        <field name="view_mode">pivot,tree,form</field>
+        <field name="search_view_id" ref="view_task_search_hrm_with_panel"/>
+        <field name="context">{'group_by': ['project_id', 'stage_id']}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Chưa có dữ liệu báo cáo.</p>
+        </field>
+    </record>
+
+    <!-- Menus on Top Bar -->
+    <record id="menu_calendar_nav" model="ir.ui.menu">
+        <field name="name">Lịch công việc</field>
         <field name="parent_id" ref="menu_quan_ly_cong_viec_root"/>
-        <field name="action" ref="project.rating_rating_action_project_report"/>
+        <field name="action" ref="action_task_calendar_nav"/>
+        <field name="sequence">20</field>
+    </record>
+
+    <!-- Specific View Linkage for Graph Nav -->
+    <record id="action_task_graph_nav_graph_view" model="ir.actions.act_window.view">
+        <field name="sequence" eval="1"/>
+        <field name="view_mode">graph</field>
+        <field name="view_id" ref="view_project_task_graph_hrm"/>
+        <field name="act_window_id" ref="action_task_graph_nav"/>
+    </record>
+    <record id="action_task_graph_nav_tree_view" model="ir.actions.act_window.view">
+        <field name="sequence" eval="2"/>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="view_task_tree_inherit"/>
+        <field name="act_window_id" ref="action_task_graph_nav"/>
+    </record>
+
+    <!-- Menu for Graph on Top Bar -->
+    <record id="menu_graph_nav" model="ir.ui.menu">
+        <field name="name">Biểu đồ phân tích</field>
+        <field name="parent_id" ref="menu_quan_ly_cong_viec_root"/>
+        <field name="action" ref="action_task_graph_nav"/>
         <field name="sequence">30</field>
+    </record>
+
+    <!-- Specific View Linkage for Pivot Nav -->
+    <record id="action_task_pivot_nav_pivot_view" model="ir.actions.act_window.view">
+        <field name="sequence" eval="1"/>
+        <field name="view_mode">pivot</field>
+        <field name="view_id" ref="view_project_task_pivot_hrm"/>
+        <field name="act_window_id" ref="action_task_pivot_nav"/>
+    </record>
+    <record id="action_task_pivot_nav_tree_view" model="ir.actions.act_window.view">
+        <field name="sequence" eval="2"/>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="view_task_tree_inherit"/>
+        <field name="act_window_id" ref="action_task_pivot_nav"/>
+    </record>
+
+    <!-- Menu for Pivot on Top Bar -->
+    <record id="menu_pivot_nav" model="ir.ui.menu">
+        <field name="name">Báo cáo tổng hợp</field>
+        <field name="parent_id" ref="menu_quan_ly_cong_viec_root"/>
+        <field name="action" ref="action_task_pivot_nav"/>
+        <field name="sequence">40</field>
     </record>
 </odoo>

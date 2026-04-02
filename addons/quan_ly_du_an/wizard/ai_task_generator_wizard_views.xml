@@ -14,7 +14,6 @@
                     <group>
                         <field name="project_id" readonly="1" invisible="1"/>
                         <field name="thanh_vien_ids" invisible="1"/>
-                        <field name="suggested_kanban_stages" string="Gợi ý Cột Kanban" required="1"/>
                     </group>
                     <field name="line_ids">
                         <tree editable="bottom" create="1" delete="1">
@@ -29,7 +28,7 @@
                     </field>
                 </sheet>
                 <footer>
-                    <button string="Xác nhận Sinh Công việc &amp; Cột Kanban" name="action_confirm_create" type="object" class="btn-primary" icon="fa-magic"/>
+                    <button string="Xác nhận Sinh Công việc" name="action_confirm_create" type="object" class="btn-primary" icon="fa-magic"/>
                     <button string="Hủy bỏ" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>

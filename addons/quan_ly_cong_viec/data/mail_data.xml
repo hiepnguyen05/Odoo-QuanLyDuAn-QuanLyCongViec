@@ -50,6 +50,24 @@
                 </div>
             </field>
         </record>
+        <record id="email_template_task_completed" model="mail.template">
+            <field name="name">Thông báo Hoàn thành công việc</field>
+            <field name="model_id" ref="project.model_project_task"/>
+            <field name="subject">✅ Hoàn thành: {{ object.name }}</field>
+            <field name="email_to">{{ object.project_id.user_id.email or '' }}</field>
+            <field name="body_html" type="html">
+                <div style="margin: 0px; padding: 0px;">
+                    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+                        Chào Quản lý,<br/><br/>
+                        Công việc <strong><t t-out="object.name or ''"/></strong> trong dự án <strong><t t-out="object.project_id.name or ''"/></strong> đã được đánh dấu là <strong>Hoàn thành</strong>.<br/><br/>
+                        <strong>Ngày hoàn thành:</strong> <t t-out="object.date_completed or ''"/><br/>
+                        <strong>Xếp loại KPI:</strong> <t t-out="dict(object._fields['kpi_rating'].selection).get(object.kpi_rating, 'N/A')"/><br/><br/>
+                        Trân trọng,<br/>
+                        Hệ thống Quản lý Dự án
+                    </p>
+                </div>
+            </field>
+        </record>
         <record id="ir_cron_task_deadline_reminder" model="ir.cron">
             <field name="name">Dự án: Nhắc nhở hạn chót công việc hàng ngày</field>
             <field name="model_id" ref="project.model_project_task"/>

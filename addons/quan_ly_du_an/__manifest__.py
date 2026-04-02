@@ -39,6 +39,9 @@
 
     'data': [
         'security/ir.model.access.csv',
+        'data/project_task_type_data.xml',
+        'data/project_project_stage_data.xml',
+        'views/project_task_views.xml',
         'views/hr_employee_views.xml',
         'views/project_project_views.xml',
         'views/project_type_views.xml',
