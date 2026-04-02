@@ -25,7 +25,7 @@
 > **Nhóm thực hiện:** Nhóm 9 (Lớp CNTT 17-07)
 
 ## 📖 1. Giới thiệu
-**Project & Work Manager** là hệ thống quản lý dự án và công việc chuyên sâu được xây dựng trên nền tảng Odoo 16. Hệ thống tập trung vào việc số hóa quy trình quản trị dự án phần mềm, tối ưu hóa sự phối hợp giữa các thành viên và khai phá tiềm năng tự động hóa thông qua trí tuệ nhân tạo (Generative AI).
+**Project & Work Manager** là hệ thống quản lý dự án và công việc chuyên sâu được xây dựng trên nền tảng Odoo 15. Hệ thống tập trung vào việc số hóa quy trình quản trị dự án phần mềm, tối ưu hóa sự phối hợp giữa các thành viên và khai phá tiềm năng tự động hóa thông qua trí tuệ nhân tạo (Generative AI).
 
 ### ✨ Những điểm nổi bật (Nhóm 9 - CNTT 17-07)
 Dự án được thiết kế để giải quyết bài toán quản trị dự án quy mô vừa và lớn với các tính năng đột phá:
