@@ -57,29 +57,50 @@ git clone https://github.com/hiepnguyen05/Odoo-QuanLyDuAn-QuanLyCongViec.git
 cd Odoo-QuanLyDuAn-QuanLyCongViec
 ```
 
-### 2.2. Cài đặt môi trường (Ubuntu/WSL)
-Yêu cầu: `Python 3.10`, `PostgreSQL 14+`.
+```
+#### 4.1.2. Cài đặt các thư viện cần thiết
+Người sử dụng thực thi các lệnh sau đề cài đặt các thư viện cần thiết
 
-```bash
-# Cài đặt thư viện hệ thống
-sudo apt-get install libxml2-dev libxslt-dev libldap2-dev libsasl2-dev libssl-dev python3.10-dev build-essential libpq-dev
-
-# Tạo môi trường ảo & cài dependencies
-python3.10 -m venv venv
+```
+sudo apt-get install libxml2-dev libxslt-dev libldap2-dev libsasl2-dev libssl-dev python3.10-distutils python3.10-dev build-essential libssl-dev libffi-dev zlib1g-dev python3.10-venv libpq-dev
+```
+#### 4.1.3. Khởi tạo môi trường ảo.
+- Khởi tạo môi trường ảo
+```
+python3.10 -m venv ./venv
+```
+- Thay đổi trình thông dịch sang môi trường ảo
+```
 source venv/bin/activate
-pip install -r requirements.txt
 ```
-
-### 2.3. Cấu hình Odoo & Gemini AI
-1. Tạo file `odoo.conf` với `addons_path = addons`.
-2. Khởi động Odoo và cài đặt các module: `nhan_su`, `quan_ly_du_an`, `quan_ly_cong_viec`.
-3. Cấu hình Gemini API: Vào **Thiết lập -> Kỹ thuật -> Thông số hệ thống**, thêm key `gemini.api_key`.
-
-### 2.4. Chạy hệ thống
-```bash
-python3 odoo-bin -c odoo.conf -u nhan_su,quan_ly_du_an,quan_ly_cong_viec
+- Chạy requirements.txt để cài đặt tiếp các thư viện được yêu cầu
 ```
-Truy cập: `http://localhost:8069`
+pip3 install -r requirements.txt
+```
+### 4.2. Setup database
+
+Khởi tạo database trên docker bằng việc thực thi file dockercompose.yml.
+```
+sudo docker-compose up -d
+```
+### 4.3. Setup tham số chạy cho hệ thống
+Tạo tệp **odoo.conf** có nội dung như sau:
+```
+[options]
+addons_path = addons
+db_host = localhost
+db_password = odoo
+db_user = odoo
+db_port = 5431
+xmlrpc_port = 8069
+```
+Có thể kế thừa từ file **odoo.conf.template**
+### 4.4. Chạy hệ thống và cài đặt các ứng dụng cần thiết
+Lệnh chạy
+```
+python3 odoo-bin.py -c odoo.conf -u all
+```
+Người sử dụng truy cập theo đường dẫn _http://localhost:8069/_ để đăng nhập vào hệ thống.
 
 ## 🤝 Đóng góp & Phát triển
 Dự án được phát triển bởi **Nhóm 9 - Lớp CNTT 17-07** - Khoa CNTT - Đại học Đại Nam.
